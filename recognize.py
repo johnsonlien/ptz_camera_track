@@ -8,7 +8,27 @@ KNOWN_FACES_DIR = "faces"
 CAMERA_INDEX = 0          # change if you have multiple cameras (0, 1, 2...)
 FRAME_RESIZE_SCALE = 0.25  # smaller = faster but less accurate
 TOLERANCE = 0.6            # lower = stricter match
+SHOW_ZOOM_WINDOW = True # pop up a separate window zoomed into a face
+ZOOM_PADDING = 0.3      # extra margin around the box, as a fraction of box size
+ZOOM_OUTPUT_SIZE = 400  # zoomed window is this many pixels square
 
+def get_zoomed_face(frame, top, right, bottom, left, padding=ZOOM_PADDING, size=ZOOM_OUTPUT_SIZE):
+    """Crop the frame around a bounding box with padding, then resize it up"""
+
+    box_h, box_w = bottom - top, right - left
+    pad_y, pad_x = int(box_h * padding), int(box_w * padding) 
+    
+    frame_h, frame_w = frame.shape[:2]
+    y1 = max(0, top - pad_y)
+    y2 = min(frame_h, bottom + pad_y)
+    x1 = max(0, left - pad_x)
+    x2 = min(frame_w, right + pad_x)
+
+    crop = frame[y1:y2, x1:x2]
+    if crop.size == 0:
+        return None
+    
+    return cv2.resize(crop, (size, size), interpolation=cv2.INTER_LINEAR)
 
 def load_known_faces(directory):
     """Load and encode all reference face images from a directory."""
@@ -26,7 +46,7 @@ def load_known_faces(directory):
         path = os.path.join(directory, filename)
         image = face_recognition.load_image_file(path)
         encodings = face_recognition.face_encodings(image)
-
+        
         if encodings:
             known_encodings.append(encodings[0])
             known_names.append(os.path.splitext(filename)[0])
@@ -64,6 +84,9 @@ def main():
         # Detect faces and compute encodings
         face_locations = face_recognition.face_locations(rgb_small_frame)
         face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+        
+
+        zoomed_face = None
 
         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
             name = "Unknown"
@@ -106,7 +129,15 @@ def main():
             label = f"dx: {offset_x}  dy: {offset_y}  dist: {distance}px"
 
             cv2.putText(frame, label, (left, top-10), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        
+            if SHOW_ZOOM_WINDOW and zoomed_face is None:
+                zoomed_face = get_zoomed_face(frame, top, right, bottom, left)
         cv2.imshow("Face Recognition - press 'q' to quit", frame)
+        
+        if SHOW_ZOOM_WINDOW and zoomed_face is not None:
+            cv2.imshow("Zoomed Face", zoomed_face)
+        else:
+            cv2.destroyWindow("Zoomed Face")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
