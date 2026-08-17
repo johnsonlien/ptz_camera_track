@@ -12,7 +12,7 @@ SHOW_ZOOM_WINDOW = True # pop up a separate window zoomed into a face
 ZOOM_PADDING = 0.3      # extra margin around the box, as a fraction of box size
 ZOOM_OUTPUT_SIZE = 400  # zoomed window is this many pixels square
 
-def get_zoomed_face(frame, top, right, bottom, left, padding=ZOOM_PADDING, size=ZOOM_OUTPUT_SIZE):
+def get_zoomed_cropped(frame, top, right, bottom, left, padding=ZOOM_PADDING, size=ZOOM_OUTPUT_SIZE):
     """Crop the frame around a bounding box with padding, then resize it up"""
 
     box_h, box_w = bottom - top, right - left
@@ -29,6 +29,18 @@ def get_zoomed_face(frame, top, right, bottom, left, padding=ZOOM_PADDING, size=
         return None
     
     return cv2.resize(crop, (size, size), interpolation=cv2.INTER_LINEAR)
+
+def get_zoomed_affine(frame, zoom_factor=1.5, center=None):
+    height, width = frame.shape[:2]
+
+    if center is None:
+        cx, cy = width / 2.0, height / 2.0
+    else:
+        cx, cy = map(float, center) 
+
+    matrix = cv2.getRotationMatrix2D((cx,cy), 0, zoom_factor)
+
+    return cv2.warpAffine(frame, matrix, (width, height), flags=cv2.INTER_LINEAR)
 
 def load_known_faces(directory):
     """Load and encode all reference face images from a directory."""
@@ -106,7 +118,7 @@ def main():
             right = int(right / FRAME_RESIZE_SCALE)
             bottom = int(bottom / FRAME_RESIZE_SCALE)
             left = int(left / FRAME_RESIZE_SCALE)
-            print(f"Top: {top} \tRight: {right}\tBottom: {bottom}\tLeft: {left}")
+            #print(f"Top: {top} \tRight: {right}\tBottom: {bottom}\tLeft: {left}")
             # Draw bounding box and label
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
             cv2.rectangle(frame, (left, bottom - 25), (right, bottom), (0, 255, 0), cv2.FILLED)
@@ -131,7 +143,9 @@ def main():
             cv2.putText(frame, label, (left, top-10), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
         
             if SHOW_ZOOM_WINDOW and zoomed_face is None:
-                zoomed_face = get_zoomed_face(frame, top, right, bottom, left)
+                #zoomed_face = get_zoomed_cropped(frame, top, right, bottom, left)
+                zoomed_face = get_zoomed_affine(frame, zoom_factor=1.25, center=face_center)
+
         cv2.imshow("Face Recognition - press 'q' to quit", frame)
         
         if SHOW_ZOOM_WINDOW and zoomed_face is not None:

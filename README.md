@@ -44,3 +44,13 @@ BUSID   VID:PID Device              State
 6. Update permissions on WSL to access camera
     - `sudo chmod 666 /dev/video*`
 
+## Ultralytics
+
+### Warning
+
+Raspberry Pi 4 comes with Python 3.13 where the minimum PyTorch version available is v2.6. 
+This conflicts with Ultralytics Python package. Torch must be downgraded to be v2.5.1 for 
+Ultralytics to work. This means Python will need to be downgraded as well. This repo is
+using Python 3.11 -- installed via pyenv.
+
+
