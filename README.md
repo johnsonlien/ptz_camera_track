@@ -33,7 +33,6 @@ BUSID   VID:PID Device              State
     - Powershell (user): `uspipd bind --busid <BUSID>`
 5. Attach camera to WSL
     - Powershell (user): `uspipd attach --wsl --busid <BUSID>`
-
 ```bash
 > usbipd list
 Connected:
@@ -41,8 +40,13 @@ BUSID   VID:PID Device              State
 1-5     ...:... USB Live Camera     Attached 
 ```
 
-6. Update permissions on WSL to access camera
+6. Verify webcam is attached using `lsusb`
+   - If not, run `sudo modprobe uvcvideo`
+
+7. Update permissions on WSL to access camera
     - `sudo chmod 666 /dev/video*`
+
+
 
 ## Ultralytics
 
