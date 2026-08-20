@@ -1,3 +1,4 @@
 faces/*
 *.pt
 .python-version
+env/
