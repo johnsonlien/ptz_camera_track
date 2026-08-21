@@ -2,3 +2,6 @@ faces/*
 *.pt
 .python-version
 env/
+.venv/
+__pycache__/
+*.pyc

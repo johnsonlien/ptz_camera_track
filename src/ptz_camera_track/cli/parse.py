@@ -5,6 +5,9 @@ def get_cli_parser():
         description="Track an object with a DIY PTZ camera",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    # Models
+    model_group = parser.add_argument_group("Models")
+    model_group.add_argument("-m", "--model", choice=["yolo11n.pt"])
 
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")

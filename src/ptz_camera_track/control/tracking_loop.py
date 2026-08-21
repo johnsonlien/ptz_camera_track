@@ -1,4 +1,4 @@
-from ptz_camera_track.tracker.tracking import Tracker
+from ptz_camera_track.tracker.tracker import Tracker
 from ptz_camera_track.control.target_selector import TargetSelector
 from ptz_camera_track.servo.servo_controller import PanTiltController
 
@@ -50,5 +50,5 @@ class TrackingLoop:
             while True:
                 self.step()
         except KeyboardInterrupt:
-            self.pan_tilt.reset()
+            self.servo_controller.reset()
 
