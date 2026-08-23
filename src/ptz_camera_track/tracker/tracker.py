@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 
 class Tracker:
-    def __init__(self, model_path="yolo11n.pt", tracker_config="bytetrack.yaml", self.conf=0.5, classes=None):
+    def __init__(self, model_path="yolo11n.pt", tracker_config="bytetrack.yaml", conf=0.5, classes=None):
         
         self.model = YOLO(model_path)
         self.tracker_config = tracker_config
@@ -18,4 +18,4 @@ class Tracker:
             persist=True,
             verbose=False,
         )
-        return results[0]
+        return results
