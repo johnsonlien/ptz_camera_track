@@ -5,14 +5,21 @@ def get_cli_parser():
         description="Track an object with a DIY PTZ camera",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-
+    # Tracking 
+    tracking_group = parser.add_argument_group("Tracking Settings")
+    tracking_group.add_argument("-m", "--model", choices=["yolo11n.pt, yolo26n.pt"], default="yolo26n.pt")
+    tracking_group.add_argument("-c", "--confidence", default=0.5)
+    tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
+    tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")
+    camera_group.add_argument('-f', "--file", help="Designate file to use")
     camera_group.add_argument("-z", "--zoom", help="Set the zoom scale", default=1.5, type=float)
-    camera_group.add_argument("-ts", "--track-strategy", choices=["manual", "highest_confidence"], help="Choose a zoom strategy for targeting.", default="manual")
+    camera_group.add_argument("-ts", "--track-strategy", choices=["manual", "highest_confidence"], help="Choose a tracking strategy for targeting.", default="highest_confidence")
 
     camera_group.add_argument("-ci", "--camera-index", help="Change camera index", default=0, type=int)
-    
+    camera_group.add_argument("-zs", "--zoom-strategy", choices=["affine"], default="affine", type=str, help="Choose zoom strategies for different performance and look")
+
     # Movement-related
     movement_group = parser.add_argument_group("Movement Settings", "Change GPIO Servo settings")
     movement_group.add_argument("-pp", "--pan-pin", help="Set the GPIO panning pin", type=int, default=23)
@@ -27,6 +34,8 @@ def get_cli_parser():
     movement_group.add_argument("--tilt-min-pulse", help="Set the tilting minimum pulse width", default=0.6/1000, type=float)
     movement_group.add_argument("--tilt-max-pulse", help="Set the tilting maximum pulse width", default=2.3/1000, type=float)
     
+    logging_group = parser.add_argument_group("Logging Settings")
+    logging_group.add_argument("-l", "--log", choices=["error", "warn", "info", "debug"], default="info")
 
-    return parser
+    return parser.parse_args()
 

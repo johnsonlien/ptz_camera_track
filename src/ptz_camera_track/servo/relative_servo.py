@@ -16,15 +16,19 @@ class RelativeAngularServo(AngularServo):
         max_pulse_width = 2.3/1000,
         frame_width = 20/1000
     ):
-        absolute_min = starting_angle + min_offset
-        absolute_max = starting_angle + max_offset
+        # Have this class handle min/max angles so AngularServo does not throw an exception
+        self.absolute_min = starting_angle + min_offset
+        self.absolute_max = starting_angle + max_offset
 
-        super().__init__(pin, min_angle=absolute_min, max_angle=absolute_max, min_pulse_width=min_pulse_width, max_pulse_width=max_pulse_width, frame_width=frame_width)
+        super().__init__(pin, min_angle=-220.0, max_angle=220.0, min_pulse_width=min_pulse_width, max_pulse_width=max_pulse_width, frame_width=frame_width)
 
         self.starting_angle = starting_angle
         self.min_offset = min_offset
         self.max_offset = max_offset
         self.reset_angle()
+    
+    def __del__(self):
+        self.detach()
 
     def reset_angle(self):
         """
@@ -32,13 +36,13 @@ class RelativeAngularServo(AngularServo):
         """
         self.angle = self.starting_angle
 
-    def move_relative(self, delta_degrees):
+    def move_angle(self, delta_degrees):
         """
         Move by delta_degrees from current angle, clamped to the servo's abs min/max angles
         """
 
         target = (self.angle if self.angle is not None else self.starting_angle) + delta_degrees
-        self.angle = max(self.min_angle, min(self.max_angle, target))
+        self.angle = max(self.absolute_min, min(self.absolute_max, target))
 
     @property
     def offset_from_start(self):
