@@ -1,7 +1,9 @@
-faces/*
-*.pt
 .python-version
+
+# Environment files
 env/
 .venv/
+
+# Generated cache files
 __pycache__/
 *.pyc
