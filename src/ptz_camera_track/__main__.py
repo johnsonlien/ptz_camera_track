@@ -6,12 +6,19 @@ from ptz_camera_track.control.target_selector import TargetSelector
 #from ptz_camera_track.servo.relative_servo import RelativeAngularServo
 from ptz_camera_track.tracker.tracker import Tracker
 
+
+from enum import Enum
 import cv2
 
 
 kp_pan = 3
 kp_tilt = 3
 UNLOCK_AREA_RATIO=0.12
+
+class LockStatus(Enum):
+    UNLOCKED = 0 
+    LOCKED = 1
+
 
 def main():
     parser = get_cli_parser()
@@ -47,10 +54,15 @@ def main():
         model_path=parser.model,
         tracker_config=f"{parser.track_config}.yaml",
         conf=parser.confidence,
-        classes=[0]
+        # yolo11n.pt            '0' -> 'person'
+        # yolo11n_fish.pt       '0' -> 'fish"
+        classes=[0] # yolo11n.pt has '0' as person, the custom yolo11n_fish.pt uses '0' for fish 
     )
     targeter = TargetSelector()
     zoom_strategy = ZoomStrategy()
+
+    lock_status = LockStatus.UNLOCKED
+    track_id = None
     with CameraController(device_index=parser.camera_index) as camera: 
         width, height = camera.get_frame_size()
         while True:
@@ -58,14 +70,42 @@ def main():
             frame_h, frame_w = frame.shape[:2]
 
             results = tracker.track_frame(frame)
-            idx = results[0].boxes.id.tolist().index(results[0])
-            x_center, y_center, w, h = results[0].boxes.xywh[idx].tolist()
-            
-            zoomed_frame = zoom_strategy.zoom_affine(
-                frame, 
-                center=(x_center, y_center) 
-            )
+             
+            if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
+                lock_status = LockStatus.LOCKED
+                
+                track_id = self.selector.select(results)
+                print(f"Track ID: {track_id}")
+                
+                idx = results.boxes.id.tolist().index(target_id)
+                x_center, y_center, w, h = results.boxes.xywh[idx].tolist()
 
+            elif results.boxes.id is not None and lock_status == LockStatus.LOCKED:
+                print(f"Already tracking something")
+            else:
+                lock_status = LockStatus.UNLOCKED
+                track_id = None
+
+
+            if lock_status == LockStatus.LOCKED:
+                x1, y1, x2, y2 = results.boxes.xyxy[0].tolist()
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(
+                    frame, 
+                    f"ID: {track_id}",
+                    (x1, y1-10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2,
+                )
+                frame = zoom_strategy.zoom(
+                    frame,
+                    "affine",
+                    zoom_scale = parser.zoom_scale,
+                    center=(x_center, y_center) 
+                )
+            
             # Calculate the difference from target's box center from 
             # screen's center and normalize it
             error_x = (x_center - frame_w / 2) / (frame_w / 2)
@@ -79,9 +119,11 @@ def main():
             print(f"Panning {pan_delta}")
             print(f"Tilting {tilt_delta}")
             
-            cv2.imshow("Camera Test", frame)
+            cv2.imshow(f"Tracking Window", frame)
+            
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+        
         cv2.destroyAllWindows()
 
 
