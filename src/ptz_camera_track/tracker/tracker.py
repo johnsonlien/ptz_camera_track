@@ -18,4 +18,4 @@ class Tracker:
             persist=True,
             verbose=False,
         )
-        return results
+        return results[0]
