@@ -1,6 +1,6 @@
 from ptz_camera_track.tracker.tracker import Tracker
 from ptz_camera_track.control.target_selector import TargetSelector
-from ptz_camera_track.servo.servo_controller import PanTiltController
+from ptz_camera_track.servo.servo_controller import ServoController
 
 class TrackingLoop:
     def __init__(self, 
