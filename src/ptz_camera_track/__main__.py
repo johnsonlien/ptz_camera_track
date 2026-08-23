@@ -70,25 +70,28 @@ def main():
             frame_h, frame_w = frame.shape[:2]
 
             results = tracker.track_frame(frame)
-             
+            
+            # Handle lock state transition
             if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
                 lock_status = LockStatus.LOCKED
                 
-                track_id = self.selector.select(results)
-                print(f"Track ID: {track_id}")
+                # track_id = self.selector.select(results)
+                # print(f"Track ID: {track_id}")
                 
-                idx = results.boxes.id.tolist().index(target_id)
-                x_center, y_center, w, h = results.boxes.xywh[idx].tolist()
+                # idx = results.boxes.id.tolist().index(target_id)
+                # x_center, y_center, w, h = results.boxes.xywh[idx].tolist()
 
-            elif results.boxes.id is not None and lock_status == LockStatus.LOCKED:
-                print(f"Already tracking something")
-            else:
+            elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
                 lock_status = LockStatus.UNLOCKED
-                track_id = None
 
 
             if lock_status == LockStatus.LOCKED:
-                x1, y1, x2, y2 = results.boxes.xyxy[0].tolist()
+                x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
+
+                print(f"{x1=}, {y1=}, {x2=}, {y2=}")
+                x_center, y_center = (x2 - x1) / 2, (y2 - y1) / 2
+                print(f"Locked target center: ({x_center}, {y_center})")
+
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(
                     frame, 
@@ -101,23 +104,23 @@ def main():
                 )
                 frame = zoom_strategy.zoom(
                     frame,
-                    "affine",
-                    zoom_scale = parser.zoom_scale,
+                    strategy = "affine",
+                    zoom_scale = parser.zoom,
                     center=(x_center, y_center) 
                 )
             
-            # Calculate the difference from target's box center from 
-            # screen's center and normalize it
-            error_x = (x_center - frame_w / 2) / (frame_w / 2)
-            error_y = (y_center - frame_h) / (frame_h / 2)
+                # Calculate the difference from target's box center from 
+                # screen's center and normalize it
+                error_x = (x_center - frame_w / 2) / (frame_w / 2)
+                error_y = (y_center - frame_h) / (frame_h / 2)
 
-            # Calculate how much to adjust servos
-            pan_delta = kp_pan * error_x * 100 
-            tilt_delta = kp_tilt * error_y * 100
+                # Calculate how much to adjust servos
+                pan_delta = kp_pan * error_x * 100 
+                tilt_delta = kp_tilt * error_y * 100
 
-            # Move servos
-            print(f"Panning {pan_delta}")
-            print(f"Tilting {tilt_delta}")
+                # Move servos
+                print(f"Panning {pan_delta}")
+                print(f"Tilting {tilt_delta}")
             
             cv2.imshow(f"Tracking Window", frame)
             
