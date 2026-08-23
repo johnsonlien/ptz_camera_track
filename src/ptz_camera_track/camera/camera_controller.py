@@ -2,17 +2,21 @@ import cv2
 
 class CameraController:
 
-    def __init__(self, device_index=0, resolution=(640, 480), framerate=30):
+    def __init__(self, device_index=0, resolution=(640, 480), framerate=30, file=None):
         self.resolution = resolution
         self.framerate = framerate
         self.camera_index = device_index 
         self._cam = None
-
+        self.file = None
+    
     def start(self):
-
-        self._cam = cv2.VideoCapture(self.camera_index) # Camera should be at index 0
+        if self.file is not None:
+            self._cam = cv2.VideoCapture(self.file) # Camera should be at index 0
+        else:
+            self._cam = cv2.VideoCapture(self.camera_index) # Camera should be at index 0
+        
         if not self._cam.isOpened():
-            print("Error: Could not open webcam. Check CAMERA_INDEX or USB connection.")
+            print("Error: Could not open video. Check if video file exists, webcam is plugged in, or if the correct index is used for live video")
             return
         
         width, height = self.resolution
@@ -43,7 +47,7 @@ class CameraController:
         height = int(self._cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         return width, height
-
+    
     def stop(self):
         if self._cam is not None:
             self._cam.release()
