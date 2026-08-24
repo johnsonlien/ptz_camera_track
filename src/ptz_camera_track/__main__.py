@@ -27,19 +27,21 @@ def main():
     
     pan_servo = RelativeAngularServo(
         parser.pan_pin,
-        min_angle = parser.pan_min_angle,
-        max_angle = parser.pan_max_angle,
-        min_pulse = parser.pan_min_pulse,
-        max_pulse = parser.pan_max_pulse
+        0,
+        min_offset = parser.pan_min_angle,
+        max_offset = parser.pan_max_angle,
+        min_pulse_width = parser.pan_min_pulse,
+        max_pulse_width = parser.pan_max_pulse
     )
     tilt_servo = RelativeAngularServo(
         parser.tilt_pin,
-        min_angle = parser.tilt_min_angle,
-        max_angle = parser.tilt_max_angle,
-        min_pulse = parser.tilt_min_pulse,
-        max_pulse = parser.tilt_max_pulse
+        100,
+        min_offset = parser.tilt_min_angle,
+        max_offset = parser.tilt_max_angle,
+        min_pulse_width = parser.tilt_min_pulse,
+        max_pulse_width = parser.tilt_max_pulse
     )
-    servo_controller = ServoContrroller(pan_servo, tilt_servo)
+    servo_controller = ServoController(pan_servo, tilt_servo)
 
     tracker = Tracker(
         model_path=parser.model,
@@ -56,69 +58,68 @@ def main():
     track_id = None
     with CameraController(device_index=parser.camera_index) as camera: 
         width, height = camera.get_frame_size()
-        while True:
-            frame = camera.read_frame()
-            frame_h, frame_w = frame.shape[:2]
+        try:
+            while True:
+                frame = camera.read_frame()
+                frame_h, frame_w = frame.shape[:2]
 
-            results = tracker.track_frame(frame)
-            
-            # Handle lock state transition
-            if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
-                lock_status = LockStatus.LOCKED
+                results = tracker.track_frame(frame)
                 
-                # track_id = self.selector.select(results)
-                # print(f"Track ID: {track_id}")
+                # Handle lock state transition
+                if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
+                    lock_status = LockStatus.LOCKED
+                    
+                    track_id = self.selector.select(results)
+
+                elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
+                    lock_status = LockStatus.UNLOCKED
+                    track_id = None
+
+                if lock_status == LockStatus.LOCKED:
+                    x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
+
+                    print(f"{x1=}, {y1=}, {x2=}, {y2=}")
+                    x_center, y_center = (x2 - x1) / 2, (y2 - y1) / 2
+                    print(f"Locked target center: ({x_center}, {y_center})")
+
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(
+                        frame, 
+                        f"ID: {track_id}",
+                        (x1, y1-10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 0),
+                        2,
+                    )
+                    frame = zoom_strategy.zoom(
+                        frame,
+                        strategy = "affine",
+                        zoom_scale = parser.zoom,
+                        center=(x_center, y_center) 
+                    )
                 
-                # idx = results.boxes.id.tolist().index(target_id)
-                # x_center, y_center, w, h = results.boxes.xywh[idx].tolist()
+                    # Calculate the difference from target's box center from 
+                    # screen's center and normalize it
+                    error_x = (x_center - frame_w / 2) / (frame_w / 2)
+                    error_y = (y_center - frame_h) / (frame_h / 2)
 
-            elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
-                lock_status = LockStatus.UNLOCKED
+                    # Calculate how much to adjust servos
+                    pan_delta = kp_pan * error_x * 100 
+                    tilt_delta = kp_tilt * error_y * 100
 
+                    # Move servos
+                    print(f"Panning {pan_delta}")
+                    print(f"Tilting {tilt_delta}")
+                    servo_controller.nudge(pan_delta, tilt_delta)
 
-            if lock_status == LockStatus.LOCKED:
-                x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
-
-                print(f"{x1=}, {y1=}, {x2=}, {y2=}")
-                x_center, y_center = (x2 - x1) / 2, (y2 - y1) / 2
-                print(f"Locked target center: ({x_center}, {y_center})")
-
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(
-                    frame, 
-                    f"ID: {track_id}",
-                    (x1, y1-10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    2,
-                )
-                frame = zoom_strategy.zoom(
-                    frame,
-                    strategy = "affine",
-                    zoom_scale = parser.zoom,
-                    center=(x_center, y_center) 
-                )
-            
-                # Calculate the difference from target's box center from 
-                # screen's center and normalize it
-                error_x = (x_center - frame_w / 2) / (frame_w / 2)
-                error_y = (y_center - frame_h) / (frame_h / 2)
-
-                # Calculate how much to adjust servos
-                pan_delta = kp_pan * error_x * 100 
-                tilt_delta = kp_tilt * error_y * 100
-
-                # Move servos
-                print(f"Panning {pan_delta}")
-                print(f"Tilting {tilt_delta}")
-                servo_controller.nudge(pan_delta, tilt_delta)
-
-            cv2.imshow(f"Tracking Window", frame)
-            
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        
+                cv2.imshow(f"Tracking Window", frame)
+                
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        finally:
+            pan_servo.detach()
+            tilt_servo.detach()
         cv2.destroyAllWindows()
 
 
