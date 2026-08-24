@@ -12,8 +12,8 @@ class ServoController:
     def nudge(self, pan_delta, tilt_delta):
         print(f"Panning {pan_delta} degrees and tilting {tilt_delta} degrees")
 
-        self.pan_servo.move_relative(pan_delta)
-        self.tilt_servo.move_relative(tilt_delta)
+        self.pan_servo.move_angle(pan_delta)
+        self.tilt_servo.move_angle(tilt_delta)
 
 
     def reset(self):

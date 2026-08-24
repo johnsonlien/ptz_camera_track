@@ -12,10 +12,11 @@ class RelativeAngularServo(AngularServo):
         starting_angle, 
         min_offset = -90,
         max_offset = 90,
-        min_pulse_width = 0.6/1000,
-        max_pulse_width = 2.3/1000,
+        min_pulse_width = 0.5/1000,
+        max_pulse_width = 2.5/1000,
         frame_width = 20/1000
     ):
+        self.pin = pin
         # Have this class handle min/max angles so AngularServo does not throw an exception
         self.absolute_min = starting_angle + min_offset
         self.absolute_max = starting_angle + max_offset
@@ -28,7 +29,12 @@ class RelativeAngularServo(AngularServo):
         self.reset_angle()
     
     def __del__(self):
-        self.detach()
+        print(f"Servo on pin {self.pin} is detaching...")
+        try:
+            self.detach()
+        except Exception:
+            print("Couldn't detach servo. Might have already been detached")
+            return
 
     def reset_angle(self):
         """
