@@ -1,6 +1,6 @@
 from ptz_camera_track.servo.relative_servo import RelativeAngularServo
 
-class PanTiltController:
+class ServoController:
     """
     Coordinates a pan servo and tilt servo
     """
