@@ -8,9 +8,8 @@ from gpiozero.pins.lgpio import LGPIOFactory
 # ====
 # Configurations
 # ====
-
+TILT_PIN=12
 PAN_PIN = 13 
-TILT_PIN = 12
 
 MIN_ANGLE = -90.0
 MAX_ANGLE = 90.0
@@ -60,17 +59,9 @@ servo_pan = AngularServo(
     min_pulse_width=MIN_PULSE_WIDTH,
     max_pulse_width=MAX_PULSE_WIDTH,
 )
-servo_tilt = AngularServo(
-    TILT_PIN,
-    min_angle=-90,
-    max_angle=130,
-    min_pulse_width=MIN_PULSE_WIDTH,
-    max_pulse_width=MAX_PULSE_WIDTH
-)
 
 def move_to(pan_angle, tilt_angle, settle_time=0.5):
     servo_pan.angle = pan_angle
-    servo_tilt.angle = tilt_angle
     time.sleep(settle_time)
 
 
@@ -84,12 +75,6 @@ def sweep_demo():
         print(f"Panning {angle} degrees")
         move_to(x, y, settle_time=0.1)
 
-    print("Sweeping tilt...")
-    for angle in range(-90, 90, 10):
-
-        print(f"Tilting {angle} degrees")
-        move_to(0, angle, settle_time=1)
-
     print("Returning to center...")
     move_to(0,50)
 
@@ -99,5 +84,4 @@ if __name__ == "__main__":
     finally:
         move_to(0, 120)
         servo_pan.detach()
-        servo_tilt.detach()
         print("Done. Servos detached.")

@@ -1,22 +1,27 @@
-import cv2
+#!/usr/bin/env python3 
 
-from ptz_camera_track.camera.camera_controller import CameraController
+import cv2 
+import sys
 
-def main():
-    with CameraController(device_index=0, resolution=(640, 480), framerate=30) as camera:
+camera_index = 0
+cap = cv2.VideoCapture(camera_index)
 
-        width, height = camera.get_frame_size()
+if not cap.isOpened():
+    print("Could not open camera")
+    sys.exit()    
 
-        print(f"Camera opened at {width}x{height}")
 
-        while True:
-            frame = camera.read_frame()
-            cv2.imshow("Camera Test", frame)
+while True:
+    ret, frame = cap.read() 
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+    if not ret:
+        print("Error could not grab frame.")
+        break
 
-    cv2.destroyAllWindows()
+    cv2.imshow("USB Webcam feed", frame)
 
-if __name__ == "__main__":
-    main()
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release(0)
+cv2.destroyAllWindows()
