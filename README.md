@@ -4,10 +4,13 @@ Create a PTZ camera that can track and move on a Raspberry Pi
 
 Setup:
 
-- Typical USB webcam
-- Raspberry Pi 4 w 4 GB ram
-- Survos
-
+- Some Logitech USB webcam from around 2018 
+- [Raspberry Pi 4 w 4 GB ram](https://vilros.com/products/raspberry-pi-4-model-b-1?variant=40809478750302)
+- [Survos MG995](https://www.amazon.com/dp/B07NQJ1VZ2?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) (+ [mounts and screws](https://www.amazon.com/dp/B07PQ12TXS?ref=ppx_yo2ov_dt_b_fed_asin_title)) 
+- Cardboard box for my base
+- Tape to secure the webcam onto the servos
+- [Jumper wires](https://www.amazon.com/dp/B01EV70C78?ref=ppx_yo2ov_dt_b_fed_asin_title)
+- [External power supply](https://www.amazon.com/dp/B09VT2G5M4?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
 # Environment
 
@@ -45,8 +48,6 @@ BUSID   VID:PID Device              State
 
 7. Update permissions on WSL to access camera
     - `sudo chmod 666 /dev/video*`
-
-
 
 ## Ultralytics
 
