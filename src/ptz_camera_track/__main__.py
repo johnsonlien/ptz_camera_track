@@ -21,28 +21,9 @@ class LockStatus(Enum):
     UNLOCKED = 0 
     LOCKED = 1
 
-
 def main():
     parser = get_cli_parser()
     
-    pan_servo = RelativeAngularServo(
-        parser.pan_pin,
-        0,
-        min_offset = parser.pan_min_angle,
-        max_offset = parser.pan_max_angle,
-        min_pulse_width = parser.pan_min_pulse,
-        max_pulse_width = parser.pan_max_pulse
-    )
-    tilt_servo = RelativeAngularServo(
-        parser.tilt_pin,
-        100,
-        min_offset = parser.tilt_min_angle,
-        max_offset = parser.tilt_max_angle,
-        min_pulse_width = parser.tilt_min_pulse,
-        max_pulse_width = parser.tilt_max_pulse
-    )
-    servo_controller = ServoController(pan_servo, tilt_servo)
-
     tracker = Tracker(
         model_path=parser.model,
         tracker_config=f"{parser.track_config}.yaml",
@@ -69,7 +50,7 @@ def main():
                 if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
                     lock_status = LockStatus.LOCKED
                     
-                    track_id = self.selector.select(results)
+                    track_id = targeter.select(results)
 
                 elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
                     lock_status = LockStatus.UNLOCKED
@@ -111,15 +92,16 @@ def main():
                     # Move servos
                     print(f"Panning {pan_delta}")
                     print(f"Tilting {tilt_delta}")
-                    servo_controller.nudge(pan_delta, tilt_delta)
+                    #servo_controller.nudge(pan_delta, tilt_delta)
 
                 cv2.imshow(f"Tracking Window", frame)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
         finally:
-            pan_servo.detach()
-            tilt_servo.detach()
+            print("Detaching servos...")
+            #pan_servo.detach()
+            #tilt_servo.detach()
         cv2.destroyAllWindows()
 
 
