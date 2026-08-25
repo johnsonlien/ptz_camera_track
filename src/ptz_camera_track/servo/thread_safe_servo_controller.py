@@ -41,7 +41,6 @@ class TSServo:
             max_pulse_width = config.max_pulse_width,
         )
 
-
     def _clamp(self, angle: float) -> float:
         lo, hi = sorted((self.config.min_angle, self.config.max_angle))
 
