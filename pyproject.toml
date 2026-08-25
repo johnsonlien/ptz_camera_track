@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptz_camera_track" 
+version = "0.0.1"
+description = "DIY of a pan-tilt-zoom camera using a USB Webcam, a Raspberry Pi 4, and a couple of servos"
+readme = "README.md"
+requires-python = "=>3.11, <3.13"
+dynamic = ["dependencies"]
+
+
+[project.urls]
+homepage = "https://github.com/johnsonlien/ptz_camera_track/tree/main"
+
+[project.scripts]
+ptz_camera_track = "ptz_camera_track:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
