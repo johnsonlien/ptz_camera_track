@@ -172,6 +172,7 @@ class TSServoController:
         self.move_to_async("tilt_servo", tilt_angle, step_degree=step_degree, step_delay=step_delay)
 
     def wait_all(self, timeout: Optional[float] = None) -> None:
+        logging.debug("Thread-safe Servo Controller is waiting for all threads to finish")
         with self._controller_lock:
             threads = list(self._threads)
         for t in threads:
@@ -179,7 +180,7 @@ class TSServoController:
 
     def shutdown(self) -> None:
         """Stop and cleanup all servos"""
-
+        logging.info("Thread-safe Servo Controller initiating servo cleanup")
         for name in list(self._servos.keys()):
             self.stop(name)
         self.wait_all(timeout=2.0)

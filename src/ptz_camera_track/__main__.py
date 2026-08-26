@@ -44,6 +44,8 @@ def main():
 
     lock_status = LockStatus.UNLOCKED
     track_id = None
+
+    threshold = parser.threshold
     with CameraController(device_index=parser.camera_index) as camera: 
         width, height = camera.get_frame_size()
         try:
@@ -96,20 +98,34 @@ def main():
                     pan_delta = kp_pan * error_x * 10
                     tilt_delta = kp_tilt * error_y * 10
                     # Only move servos when passed by a certain threshold
+                    if (-threshold < pan_delta > threshold) and (-threshold < tilt_delta > threshold):
+                        x_angle = servo_controller.get_angle("pan_servo")
+                        y_angle = servo_controller.get_angle("tilt_servo")
 
+                        new_x = x_angle + pan_delta
+                        new_y = y_angle + tilt_delta
+                        logging.info(f"Panning to {new_x} and tilting to {new_y}") 
+                        servo_controller.move_both_async(new_x, new_y)
+                    elif -threshold < pan_delta > threshold:
+                        x_angle = servo_controller.get_angle("pan_servo")
+                        
+                        new_x = x_angle + pan_angle
+                        logging.info(f"Panning to {new_x}")
+                        servo_controller.set_angle_async("pan_servo", new_x)
+                    elif -threshold < tilt_delta > threshold:
+                        y_angle = servo_controller.get_angle("tilt_servo")
 
-                    # Move servos
-                    logger.info(f"Panning {pan_delta}")
-                    logger.info(f"Tilting {tilt_delta}")
+                        new_y = y_angle + tilt_delta
+                        logging.info(f"Tilting to {new_y}")
+                        servo_controller.set_angle_async("tilt_servo", new_y)
 
                 cv2.imshow(f"Tracking Window", frame)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
         finally:
-            print("Detaching servos...")
-            #pan_servo.detach()
-            #tilt_servo.detach()
+            logging.info("Detaching servos...")
+            servo_controller.shutdown()
         cv2.destroyAllWindows()
 
 

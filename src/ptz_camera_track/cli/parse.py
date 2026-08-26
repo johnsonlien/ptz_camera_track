@@ -11,6 +11,8 @@ def get_cli_parser():
     tracking_group.add_argument("-c", "--confidence", default=0.5)
     tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
     tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
+    tracking_group.add_argument("--threshold", type=float, help="The degrees of difference from target to frame center to determine whether to mvoe servos or not", default=10.0)
+
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")
     camera_group.add_argument('-f', "--file", help="Designate file to use")
@@ -35,7 +37,7 @@ def get_cli_parser():
     movement_group.add_argument("--tilt-max-pulse", help="Set the tilting maximum pulse width", default=2.3/1000, type=float)
     
     logging_group = parser.add_argument_group("Logging Settings")
-    logging_group.add_argument("-l", "--log", choices=["error", "warn", "info", "debug"], default="info")
+    logging_group.add_argument("-l", "--logging", choices=["ERROR", "WARN", "INFO", "DEBUG"], default="INFO")
 
     return parser.parse_args()
 
