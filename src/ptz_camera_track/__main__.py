@@ -6,7 +6,7 @@ from ptz_camera_track.camera.zoom import ZoomStrategy
 from ptz_camera_track.control.target_selector import TargetSelector
 
 from ptz_camera_track.servo.relative_servo import RelativeAngularServo
-from ptz_camera_track.servo.servo_controller import ServoController
+from ptz_camera_track.servo.thread_safe_servo_controller import TSServoController, ServoConfig
 
 from ptz_camera_track.tracker.tracker import Tracker
 
@@ -42,6 +42,19 @@ def main():
     targeter = TargetSelector()
     zoom_strategy = ZoomStrategy()
 
+    pan_servo_config = ServoConfig(
+        23,
+        min_angle=-90.0,
+        max_angle=90.0,
+        initial_angle=0
+    )
+    tilt_servo_config = ServoConfig(
+        24,
+        min_angle=60,
+        max_angle=100,
+        initial_angle=60,
+    )
+    servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
     lock_status = LockStatus.UNLOCKED
     track_id = None
 
