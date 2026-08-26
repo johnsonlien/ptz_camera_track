@@ -1,4 +1,5 @@
 import cv2
+import logging
 
 class ZoomStrategy:
     def __init__(self):
@@ -12,7 +13,7 @@ class ZoomStrategy:
             kwargs = {'zoom_scale': zoom_scale, 'center': center}
             return self.zoom_strategies[strategy](frame, **kwargs)
 
-        print(f"Warning: Zoom strategy '{strategy}' was not found.")
+        logging.warning(f"Warning: Zoom strategy '{strategy}' was not found.")
         return frame 
     
     @staticmethod

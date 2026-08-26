@@ -8,13 +8,6 @@ from typing import Callable, Dict, Optional
 
 from gpiozero import AngularServo
 
-#try:
-#    from gpiozero.pins.mock import MockFactory, MockPWMPin
-#    from gpiozero import Device
-#    IS_MOCK = True
-#except ImportError:
-#    IS_MOCK = False
-#
 @dataclass
 class ServoConfig:
     pin: int
@@ -172,7 +165,7 @@ class TSServoController:
     ) -> None:
         
         names = list(self._servos.keys())
-        print(f"Servo names: {names}")
+        logging.debug(f"Servo names: {names}")
         # names will always be 'pan_servo' and then 'tilt_servo'
 
         self.move_to_async("pan_servo", pan_angle, step_degree=step_degree, step_delay=step_delay)
@@ -195,6 +188,8 @@ class TSServoController:
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
+    logger.basicConfig(level="debug")
     # Some initial tests
     pan_config = ServoConfig(
         23,
@@ -211,22 +206,22 @@ if __name__ == "__main__":
 
     servo_controller = TSServoController(pan_config, tilt_config)
 
-    print(f"Panning the camera!") 
+    logger.debug(f"Panning the camera!") 
     for angle in range(int(pan_config.min_angle), int(pan_config.max_angle), 20):
-        print(f"Panning to {angle}")
+        logger.info(f"Panning to {angle}")
         servo_controller.set_angle("pan_servo", float(angle), settle_time=1)
     
-    print(f"Tilting the camera!")    
+    logger.debug(f"Tilting the camera!")    
     for angle in range(int(tilt_config.min_angle), int(pan_config.max_angle), 20):
-        print(f"Tilting servo to {angle}")
+        logger.info(f"Tilting servo to {angle}")
         servo_controller.set_angle("tilt_servo", angle, settle_time=1)
    
-    print("Returning servos to initial angles")
+    logger.info("Returning servos to initial angles")
     servo_controller.move_both_async(pan_config.initial_angle, tilt_config.initial_angle)
     
 
-    print(f"Waiting for all servos to complete their movement...")
+    logger.info(f"Waiting for all servos to complete their movement...")
     servo_controller.wait_all()
     
-    print(f"Pan Servo is now at angle: ", servo_controller.get_angle("pan_servo"))
-    print(f"Tilt Servo is now at angle: ", servo_controller.get_angle("tilt_servo"))
+    logger.info(f"Pan Servo is now at angle: ", servo_controller.get_angle("pan_servo"))
+    logger.info(f"Tilt Servo is now at angle: ", servo_controller.get_angle("tilt_servo"))

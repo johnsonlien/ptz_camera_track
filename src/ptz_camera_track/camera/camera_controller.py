@@ -1,4 +1,5 @@
 import cv2
+import logging
 
 class CameraController:
 
@@ -16,7 +17,7 @@ class CameraController:
             self._cam = cv2.VideoCapture(self.camera_index) # Camera should be at index 0
         
         if not self._cam.isOpened():
-            print("Error: Could not open video. Check if video file exists, webcam is plugged in, or if the correct index is used for live video")
+            logging.error("Error: Could not open video. Check if video file exists, webcam is plugged in, or if the correct index is used for live video")
             return
         
         width, height = self.resolution
@@ -34,7 +35,7 @@ class CameraController:
 
         ret, frame = self._cam.read()
         if not ret:
-            print("Error: Could not grab frame!")
+            logging.error("Error: Could not grab frame!")
             raise RuntimeError("Could not read from camera!")
         
         return frame

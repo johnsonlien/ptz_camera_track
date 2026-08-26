@@ -12,6 +12,7 @@ from ptz_camera_track.tracker.tracker import Tracker
 
 from enum import Enum
 import cv2
+import logging
 
 kp_pan = 3
 kp_tilt = 3
@@ -24,6 +25,12 @@ class LockStatus(Enum):
 def main():
     parser = get_cli_parser()
     
+    # Handle logging
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(
+        level=parser.logging,
+    )
+
     tracker = Tracker(
         model_path=parser.model,
         tracker_config=f"{parser.track_config}.yaml",
@@ -59,9 +66,9 @@ def main():
                 if lock_status == LockStatus.LOCKED:
                     x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
 
-                    print(f"{x1=}, {y1=}, {x2=}, {y2=}")
+                    logger.debug(f"{x1=}, {y1=}, {x2=}, {y2=}")
                     x_center, y_center = (x2 - x1) / 2, (y2 - y1) / 2
-                    print(f"Locked target center: ({x_center}, {y_center})")
+                    logger.debug(f"Locked target center: ({x_center}, {y_center})")
 
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.putText(
@@ -86,13 +93,14 @@ def main():
                     error_y = (y_center - frame_h) / (frame_h / 2)
 
                     # Calculate how much to adjust servos
-                    pan_delta = kp_pan * error_x * 100 
-                    tilt_delta = kp_tilt * error_y * 100
+                    pan_delta = kp_pan * error_x * 10
+                    tilt_delta = kp_tilt * error_y * 10
+                    # Only move servos when passed by a certain threshold
+
 
                     # Move servos
-                    print(f"Panning {pan_delta}")
-                    print(f"Tilting {tilt_delta}")
-                    #servo_controller.nudge(pan_delta, tilt_delta)
+                    logger.info(f"Panning {pan_delta}")
+                    logger.info(f"Tilting {tilt_delta}")
 
                 cv2.imshow(f"Tracking Window", frame)
                 

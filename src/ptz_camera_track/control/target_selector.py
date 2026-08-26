@@ -1,3 +1,4 @@
+import logging
 
 class TargetSelector:
 
@@ -11,18 +12,18 @@ class TargetSelector:
 
     def select(self, results):
         boxes = results.boxes
-        print(f"What's in boxes: {boxes}")
+        logging.debug(f"What's in boxes: {boxes}")
         if boxes is None or boxes.id is None:
-            print("No objects detected...")
+            logging.debug("No objects detected...")
             return None
 
         if self.locked_id is not None and self.locked_id in boxes.id.tolist():
-            print(f"Locked id: {self.locked_id}")
+            logging.info(f"Locked id: {self.locked_id}")
             return self.locked_id
 
         if self.strategy == "highest_confidence":
             best_idx = int(boxes.conf.argmax())
-            print(f"Highest confident ID: {best_idx}")
+            logging.info(f"Highest confident ID: {best_idx}")
         
         # Implement other tracking strategies....
         else:
