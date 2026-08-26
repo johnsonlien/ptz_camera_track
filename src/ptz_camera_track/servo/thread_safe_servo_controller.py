@@ -11,8 +11,8 @@ from gpiozero import AngularServo
 @dataclass
 class ServoConfig:
     pin: int
-    min_angle: float = 0.0
-    max_angle: float = 0.0
+    min_angle: float = -60.0
+    max_angle: float = 60.0
     min_pulse_width: float = 0.0005
     max_pulse_width: float = 0.0025
     initial_angle: Optional[float] = None
@@ -86,7 +86,7 @@ class TSServo:
     def cleanup(self) -> None:
         logging.info(f"Cleaning up {self.name}...")
         with self.lock:
-            if self._servo.is_active():
+            if self._servo is not None and self._servo.is_active:
                 logging.debug(f"{self.name} is now closing...")
                 self._servo.close()
             else:
@@ -135,7 +135,6 @@ class TSServoController:
 
     def stop(self, name: str) -> None:
         self._get_servo(name).stop()
-
 
     def set_angle_async(
         self,
