@@ -7,7 +7,7 @@ def get_cli_parser():
     )
     # Tracking 
     tracking_group = parser.add_argument_group("Tracking Settings")
-    tracking_group.add_argument("-m", "--model", type=str, default="yolo11n_fish.pt", help="Path to model. If not found, will try to download from Ultralytics")
+    tracking_group.add_argument("-m", "--model", type=str, default="yolo11n_fish_ncnn_model", help="Path to model. If not found, will try to download from Ultralytics")
     tracking_group.add_argument("-c", "--confidence", default=0.5)
     tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
     tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
