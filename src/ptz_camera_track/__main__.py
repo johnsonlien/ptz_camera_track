@@ -44,15 +44,15 @@ def main():
 
     pan_servo_config = ServoConfig(
         23,
-        min_angle=-90.0,
-        max_angle=90.0,
+        min_angle=-60.0,
+        max_angle=60.0,
         initial_angle=0
     )
     tilt_servo_config = ServoConfig(
         24,
-        min_angle=60,
-        max_angle=100,
-        initial_angle=60,
+        min_angle=-40,
+        max_angle=40,
+        initial_angle=-20,
     )
     servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
     lock_status = LockStatus.UNLOCKED
