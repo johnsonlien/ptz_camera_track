@@ -114,27 +114,16 @@ def main():
                     # Only move servos when passed by a certain threshold
                     x_outside_threshold = pan_delta < -threshold or pan_delta > threshold
                     y_outside_threshold = tilt_delta < -threshold or tilt_delta > threshold
-                   
-                   if x_outside_threshold and y_outside_threshold:
-                        x_angle = servo_controller.get_angle("pan_servo")
-                        y_angle = servo_controller.get_angle("tilt_servo")
 
+                    if x_outside_threshold:
+                        x_angle = servo_controller.get_angle("pan_servo")
                         new_x = x_angle + pan_delta
-                        new_y = y_angle + tilt_delta
-                        logging.info(f"Panning to {new_x} and tilting to {new_y}") 
-                        servo_controller.move_both_async(new_x, new_y)
-
-                    elif x_outside_threshold:
-                        x_angle = servo_controller.get_angle("pan_servo")
-                        
-                        new_x = x_angle + pan_angle
                         logging.info(f"Panning to {new_x}")
                         servo_controller.set_angle_async("pan_servo", new_x)
                     
-                    elif y_outside_threshold:
+                    if y_outside_threshold:
                         y_angle = servo_controller.get_angle("tilt_servo")
-
-                        new_y = y_angle + tilt_delta
+                        new_y = y_angle = tilt_delta 
                         logging.info(f"Tilting to {new_y}")
                         servo_controller.set_angle_async("tilt_servo", new_y)
 
