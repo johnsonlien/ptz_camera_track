@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import queue
+
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
@@ -19,12 +21,20 @@ class ServoConfig:
 
 class TSServo:
     def __init__(self, name: str, config: ServoConfig):
+        """
+        Compositive class containing AngularServo to handle angle clamping
+        """
         self.name = name
         self.config = config
         self.lock = threading.RLock()
         self.current_angle: Optional[float] = config.initial_angle
 
         self._stop_flag = threading.Event()
+        
+        self._queue: queue.Queue = queue.Queue()
+        self._worker = threading.Thread(target=self._process_queue, daemon=True)
+        self._worker.start()
+        
         self._servo = AngularServo(
             config.pin,
             initial_angle = config.initial_angle,
@@ -33,6 +43,17 @@ class TSServo:
             min_pulse_width = config.min_pulse_width,
             max_pulse_width = config.max_pulse_width,
         )
+        
+    def _process_queue(self):
+        while True:
+            func = self._queue.get()
+            if func is None:
+                break
+            func()
+            self._queue.task_done()
+
+    def _submit(self, func):
+        self._queue.put(func)
 
     def _clamp(self, angle: float) -> float:
         lo, hi = sorted((self.config.min_angle, self.config.max_angle))
@@ -53,6 +74,10 @@ class TSServo:
                 
             # Update current angle to keep track of it 
             self.current_angle = angle
+    
+    def get_angle(self):
+        with self.lock:
+            return self.current_angle
 
     def move_to(self, target_angle: float, step_degree: float = 1.0, step_delay: float = 0.02, detach_after: bool = True) -> None:
         """Incrementally move the servos instead of jumping"""
@@ -80,6 +105,7 @@ class TSServo:
                 self._servo.detach()
 
             self.current_angle = angle
+    
     def stop(self) -> None:
         self._stop_flag.set()
 
@@ -103,24 +129,11 @@ class TSServoController:
             logging.error("Could not instatiate Thread-Safe Servos")
             raise
 
-        self._controller_lock = threading.Lock()
-        self._threads: List[threading.Thread] = []
-
-
-
     def _get_servo(self, name: str) -> TSServo:
         try:
             return self._servos[name]
         except KeyError:
             raise ValueError(f"Unknown servo by name '{name}'. Available servos: {list(self._servos)}")
-
-    def _run_async(self, target: Callable[[], None]) -> thread.Thread:
-        t = threading.Thread(target=target, daemon=True)
-        with self._controller_lock:
-            self._threads.append(t)
-        t.start()
-        return t
-
 
     def set_angle(self, name: str, angle: float, settle_time: float = 0.3) -> None:
         """Blocking call to move servos"""
@@ -131,7 +144,7 @@ class TSServoController:
         self._get_servo(name).move_to(angle, step_degree=step_degree, step_delay=step_delay)
 
     def get_angle(self, name: str) -> Optional[float]:
-        return self._get_servo(name).current_angle
+        return self._get_servo(name).get_angle()
 
     def stop(self, name: str) -> None:
         self._get_servo(name).stop()
@@ -142,9 +155,8 @@ class TSServoController:
         angle: float, 
         settle_time: float = 0.5
     ) -> threading.Thread:
+        self._get_servo(name)._submit(lambda: self.set_angle(angle))
     
-        return self._run_async(lambda: self.set_angle(name, angle, settle_time=settle_time))
-
     def move_to_async(
         self,
         name: str,
@@ -153,7 +165,7 @@ class TSServoController:
         step_degree: float = 1.0,
         step_delay: float = 0.5
     ) -> threading.Thread:
-        return self._run_async(lambda: self.move_to(name, angle, step_degree=step_degree, step_delay=step_delay))
+        self._get_servo(name)._submit(lambda: self.move_to(angle))
 
     def move_both_async(
         self, 
@@ -167,29 +179,25 @@ class TSServoController:
         logging.debug(f"Servo names: {names}")
         # names will always be 'pan_servo' and then 'tilt_servo'
 
-        self.move_to_async("pan_servo", pan_angle, step_degree=step_degree, step_delay=step_delay)
-        self.move_to_async("tilt_servo", tilt_angle, step_degree=step_degree, step_delay=step_delay)
+        self._get_servo("pan_servo")._submit(lambda: self.move_to(pan_angle, step_degree=step_degree))
+        self._get_servo("tilt_servo")._submit(lambda: self.move_to(tilt_angle, step_degree=step_degree))
 
-    def wait_all(self, timeout: Optional[float] = None) -> None:
-        logging.debug("Thread-safe Servo Controller is waiting for all threads to finish")
-        with self._controller_lock:
-            threads = list(self._threads)
-        for t in threads:
-            t.join(timeout=timeout)
+    def wait_all(self) -> None:
+        for servo in self._servos.values():
+            servo._queue.join()
 
     def shutdown(self) -> None:
         """Stop and cleanup all servos"""
         logging.info("Thread-safe Servo Controller initiating servo cleanup")
         for name in list(self._servos.keys()):
             self.stop(name)
-        self.wait_all(timeout=2.0)
+        self.wait_all()
         for servo in self._servos.values():
             servo.cleanup()
 
-
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
-    logger.basicConfig(level="debug")
+    logging.basicConfig(level=logging.DEBUG)
     # Some initial tests
     pan_config = ServoConfig(
         23,
@@ -218,10 +226,8 @@ if __name__ == "__main__":
    
     logger.info("Returning servos to initial angles")
     servo_controller.move_both_async(pan_config.initial_angle, tilt_config.initial_angle)
-    
 
-    logger.info(f"Waiting for all servos to complete their movement...")
-    servo_controller.wait_all()
-    
+    servo_controller.shutdown()
+
     logger.info(f"Pan Servo is now at angle: ", servo_controller.get_angle("pan_servo"))
     logger.info(f"Tilt Servo is now at angle: ", servo_controller.get_angle("tilt_servo"))
