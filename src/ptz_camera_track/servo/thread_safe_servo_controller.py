@@ -19,8 +19,39 @@ class ServoConfig:
     max_pulse_width: float = 0.0025
     initial_angle: Optional[float] = None
 
+class MockServo:
+    """AngularServo Mock for testing"""
+    
+    def __init__(
+        self,
+        pin : int,
+        initial_angle : float = 0.0,
+        min_angle : float = -90.0,
+        max_angle : float = 90.0,
+        min_pulse_width : float = 0.5 / 1000, # Unused but mimicing the real AngularServo
+        max_pulse_width : float = 2.5 / 1000, # Unused
+    ):
+        self.pin = pin
+        self.angle = initial_angle
+        self.min_angle = min_angle
+        self.max_angle = max_angle
+        self.min_pulse_width = min_pulse_width
+        self.max_pulse_width = max_pulse_width
+        self.is_active = True
+    
+    def is_active(self):
+        return self.is_active
+    def min(self):
+        self.angle = self.min_angle
+    def max(self):
+        self.angle = self.max_angle
+    def detach(self):
+        pass
+    def close(self):
+        self.is_active = False
+
 class TSServo:
-    def __init__(self, name: str, config: ServoConfig):
+    def __init__(self, name: str, config: ServoConfig, use_mock: bool = False):
         """
         Compositive class containing AngularServo to handle angle clamping
         """
@@ -35,14 +66,24 @@ class TSServo:
         self._worker = threading.Thread(target=self._process_queue, daemon=True)
         self._worker.start()
         
-        self._servo = AngularServo(
-            config.pin,
-            initial_angle = config.initial_angle,
-            min_angle = config.min_angle,
-            max_angle = config.max_angle,
-            min_pulse_width = config.min_pulse_width,
-            max_pulse_width = config.max_pulse_width,
-        )
+        if use_mock:
+            self._servo = MockServo(
+                config.pin,
+                initial_angle = config.initial_angle,
+                min_angle = config.min_angle,
+                max_angle = config.max_angle,
+                min_pulse_width = config.min_pulse_width,
+                max_pulse_width = config.max_pulse_width,
+            )
+        else:
+            self._servo = AngularServo(
+                config.pin,
+                initial_angle = config.initial_angle,
+                min_angle = config.min_angle,
+                max_angle = config.max_angle,
+                min_pulse_width = config.min_pulse_width,
+                max_pulse_width = config.max_pulse_width,
+            )
         
     def _process_queue(self):
         while True:
@@ -119,11 +160,11 @@ class TSServo:
                 logging.debug(f"{self.name} is already closed! Continuing...")
 
 class TSServoController:
-    def __init__(self, pan_servo_config : ServoConfig, tilt_servo_config: ServoConfig):
+    def __init__(self, pan_servo_config : ServoConfig, tilt_servo_config: ServoConfig, use_mock : bool = False):
         try:
             self._servos: Dict[str, TSServo] = {
-                "pan_servo": TSServo('pan_servo', pan_servo_config),
-                "tilt_servo": TSServo('tilt_servo', tilt_servo_config),
+                "pan_servo": TSServo('pan_servo', pan_servo_config, use_mock=use_mock),
+                "tilt_servo": TSServo('tilt_servo', tilt_servo_config, use_mock=use_mock),
             }
         except Exception as e:
             logging.error("Could not instatiate Thread-Safe Servos")
@@ -155,33 +196,38 @@ class TSServoController:
         angle: float, 
         settle_time: float = 0.5
     ) -> threading.Thread:
-        self._get_servo(name)._submit(lambda: self.set_angle(angle))
+        self._get_servo(name)._submit(lambda: self.set_angle(name, angle, settle_time=settle_time))
     
     def move_to_async(
         self,
         name: str,
         angle: float,
-        settle_time: float = 0.5,
         step_degree: float = 1.0,
         step_delay: float = 0.5
     ) -> threading.Thread:
-        self._get_servo(name)._submit(lambda: self.move_to(angle))
+        self._get_servo(name)._submit(lambda: self.move_to(name, angle, settle_time=settle_time, step_degree=step_degree, step_delay=step_delay))
 
-    def move_both_async(
+    def set_both_async(
         self, 
         pan_angle: float,
         tilt_angle: float,
-        step_degree: float = 1.0,
-        step_delay: float = 0.5
+        settle_time: float = 0.5
     ) -> None:
-        
-        names = list(self._servos.keys())
-        logging.debug(f"Servo names: {names}")
-        # names will always be 'pan_servo' and then 'tilt_servo'
-
-        self._get_servo("pan_servo")._submit(lambda: self.move_to(pan_angle, step_degree=step_degree))
-        self._get_servo("tilt_servo")._submit(lambda: self.move_to(tilt_angle, step_degree=step_degree))
-
+        """Helper function to set both pan and tilt servos""" 
+        self.set_angle_async("pan_servo", pan_angle, settle_time=settle_time)
+        self.set_angle_async("tilt_servo", tilt_angle, settle_time=settle_time)
+    
+    def move_both_async(
+        self,
+        pan_angle: float,
+        tilt_angle: float,
+        step_angle: float = 3.0,
+        step_delay: float = 0.5,
+    ):
+        """Helper function to slide both pan and tilt servos"""
+        self.move_to_async("pan_servo", pan_angle, step_angle=step_angle, step_delay=step_delay)
+        self.move_to_async("tilt_servo", tilt_angle, step_angle=step_angle, step_delay=step_delay)
+    
     def wait_all(self) -> None:
         for servo in self._servos.values():
             servo._queue.join()
@@ -212,8 +258,8 @@ if __name__ == "__main__":
         initial_angle = 80
     )
 
-    servo_controller = TSServoController(pan_config, tilt_config)
-
+    servo_controller = TSServoController(pan_config, tilt_config, use_mock=True)
+     
     logger.debug(f"Panning the camera!") 
     for angle in range(int(pan_config.min_angle), int(pan_config.max_angle), 20):
         logger.info(f"Panning to {angle}")
@@ -222,12 +268,14 @@ if __name__ == "__main__":
     logger.debug(f"Tilting the camera!")    
     for angle in range(int(tilt_config.min_angle), int(pan_config.max_angle), 20):
         logger.info(f"Tilting servo to {angle}")
-        servo_controller.set_angle("tilt_servo", angle, settle_time=1)
+        servo_controller.set_angle("tilt_servo", float(angle), settle_time=1)
    
     logger.info("Returning servos to initial angles")
-    servo_controller.move_both_async(pan_config.initial_angle, tilt_config.initial_angle)
+    servo_controller.set_both_async(pan_config.initial_angle, tilt_config.initial_angle)
 
     servo_controller.shutdown()
 
-    logger.info(f"Pan Servo is now at angle: ", servo_controller.get_angle("pan_servo"))
-    logger.info(f"Tilt Servo is now at angle: ", servo_controller.get_angle("tilt_servo"))
+    logger.info(f"Pan Servo is now at angle: {servo_controller.get_angle('pan_servo')}")
+    logger.info(f"Tilt Servo is now at angle: {servo_controller.get_angle('tilt_servo')}")
+
+
