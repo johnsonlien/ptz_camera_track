@@ -60,10 +60,10 @@ using Python 3.11 -- installed via pyenv.
 
 ## Test
 
-This repo uses pytest. You can install the package and then just run `pytest` or do 
+This repo uses pytest. You can install the package and then just run `pytest ./test` or do 
 
 ```
 export PYTHONPATH="$(pwd)/src"
-pytest
+pytest ./test
 ```
 
