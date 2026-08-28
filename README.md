@@ -58,4 +58,12 @@ This conflicts with Ultralytics Python package. Torch must be downgraded to be v
 Ultralytics to work. This means Python will need to be downgraded as well. This repo is
 using Python 3.11 -- installed via pyenv.
 
+## Test
+
+This repo uses pytest. You can install the package and then just run `pytest` or do 
+
+```
+export PYTHONPATH="$(pwd)/src"
+pytest
+```
 
