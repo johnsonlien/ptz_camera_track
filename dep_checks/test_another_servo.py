@@ -86,7 +86,7 @@ class Servo:
 
     def center(self) -> None:
         """Move the servo to its neutral/center position (90 degrees)."""
-        self.set_angle(90)
+        self.set_angle(0)
 
     def stop_signal(self) -> None:
         """
