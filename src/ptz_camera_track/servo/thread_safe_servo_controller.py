@@ -161,10 +161,13 @@ class TSServo:
 
 class TSServoController:
     def __init__(self, pan_servo_config : ServoConfig, tilt_servo_config: ServoConfig, use_mock : bool = False):
+        self.TILT_SERVO = "tilt_servo"
+        self.PAN_SERVO = "pan_servo"
+
         try:
             self._servos: Dict[str, TSServo] = {
-                "pan_servo": TSServo('pan_servo', pan_servo_config, use_mock=use_mock),
-                "tilt_servo": TSServo('tilt_servo', tilt_servo_config, use_mock=use_mock),
+                self.PAN_SERVO: TSServo(self.PAN_SERVO, pan_servo_config, use_mock=use_mock),
+                self.TILT_SERVO: TSServo(self.TILT_SERVO, tilt_servo_config, use_mock=use_mock),
             }
         except Exception as e:
             logging.error("Could not instatiate Thread-Safe Servos")
@@ -214,8 +217,8 @@ class TSServoController:
         settle_time: float = 0.5
     ) -> None:
         """Helper function to set both pan and tilt servos""" 
-        self.set_angle_async("pan_servo", pan_angle, settle_time=settle_time)
-        self.set_angle_async("tilt_servo", tilt_angle, settle_time=settle_time)
+        self.set_angle_async(self.PAN_SERVO, pan_angle, settle_time=settle_time)
+        self.set_angle_async(self.TILT_SERVO, tilt_angle, settle_time=settle_time)
     
     def move_both_async(
         self,
@@ -225,8 +228,8 @@ class TSServoController:
         step_delay: float = 0.5,
     ):
         """Helper function to slide both pan and tilt servos"""
-        self.move_to_async("pan_servo", pan_angle, step_angle=step_angle, step_delay=step_delay)
-        self.move_to_async("tilt_servo", tilt_angle, step_angle=step_angle, step_delay=step_delay)
+        self.move_to_async(self.PAN_SERVO, pan_angle, step_angle=step_angle, step_delay=step_delay)
+        self.move_to_async(self.TILT_SERVO, tilt_angle, step_angle=step_angle, step_delay=step_delay)
     
     def wait_all(self) -> None:
         for servo in self._servos.values():
@@ -263,19 +266,19 @@ if __name__ == "__main__":
     logger.debug(f"Panning the camera!") 
     for angle in range(int(pan_config.min_angle), int(pan_config.max_angle), 20):
         logger.info(f"Panning to {angle}")
-        servo_controller.set_angle("pan_servo", float(angle), settle_time=1)
+        servo_controller.set_angle(servo_controller.PAN_SERVO, float(angle), settle_time=1)
     
     logger.debug(f"Tilting the camera!")    
     for angle in range(int(tilt_config.min_angle), int(pan_config.max_angle), 20):
         logger.info(f"Tilting servo to {angle}")
-        servo_controller.set_angle("tilt_servo", float(angle), settle_time=1)
+        servo_controller.set_angle(servo_controller.TILT_SERVO, float(angle), settle_time=1)
    
     logger.info("Returning servos to initial angles")
     servo_controller.set_both_async(pan_config.initial_angle, tilt_config.initial_angle)
 
     servo_controller.shutdown()
 
-    logger.info(f"Pan Servo is now at angle: {servo_controller.get_angle('pan_servo')}")
-    logger.info(f"Tilt Servo is now at angle: {servo_controller.get_angle('tilt_servo')}")
+    logger.info(f"Pan Servo is now at angle: {servo_controller.get_angle(servo_controller.PAN_SERVO)}")
+    logger.info(f"Tilt Servo is now at angle: {servo_controller.get_angle(servo_controller.TILT_SERVO)}")
 
 
