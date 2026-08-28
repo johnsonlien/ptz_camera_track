@@ -1,3 +1,5 @@
+import pytest 
+
 from ptz_camera_track.servo.thread_safe_servo_controller import ServoConfig, MockServo, TSServo, TSServoController
 
 def test_mock_servo():
@@ -6,7 +8,7 @@ def test_mock_servo():
 
     assert mock_servo.angle == 0
 
-def test_tsservo():
+def test_servo():
     config = ServoConfig(
         12,
         min_angle = -60,
@@ -21,7 +23,8 @@ def test_tsservo():
 
     assert isinstance(servo._servo, MockServo)
 
-def test_tscontroller_movement():
+@pytest.mark.movement
+def test_controller_movement():
     tilt_config = ServoConfig(
         23,
         min_angle = -90,
@@ -50,9 +53,9 @@ def test_tscontroller_movement():
     # Test going out of bounds
     # Angles should be clamping to either min_angle or max_angle
 
-    controller.set_angle("tilt_servo", -100)
-    controller.set_angle("pan_servo", 200)
+    controller.set_angle(controller.TILT_SERVO, -100)
+    controller.set_angle(controller.PAN_SERVO, 200)
     controller.wait_all()
-    assert controller.get_angle("tilt_servo") == tilt_config.min_angle
-    assert controller.get_angle("pan_servo") == pan_config.max_angle
+    assert controller.get_angle(controller.TILT_SERVO) == tilt_config.min_angle
+    assert controller.get_angle(controller.PAN_SERVO) == pan_config.max_angle
 
