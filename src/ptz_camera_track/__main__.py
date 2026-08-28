@@ -5,7 +5,6 @@ from ptz_camera_track.camera.zoom import ZoomStrategy
 
 from ptz_camera_track.control.target_selector import TargetSelector
 
-from ptz_camera_track.servo.relative_servo import RelativeAngularServo
 from ptz_camera_track.servo.thread_safe_servo_controller import TSServoController, ServoConfig
 
 from ptz_camera_track.tracker.tracker import Tracker
