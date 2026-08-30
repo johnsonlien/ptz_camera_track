@@ -49,9 +49,9 @@ def main():
     )
     tilt_servo_config = ServoConfig(
         24,
-        min_angle=-40,
+        min_angle=-10,
         max_angle=40,
-        initial_angle=-20,
+        initial_angle=0,
     )
     servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
     lock_status = LockStatus.UNLOCKED
@@ -105,7 +105,7 @@ def main():
                     # screen's center and normalize it
                     error_x = (x_center - frame_w / 2) / (frame_w / 2)
                     error_y = (y_center - frame_h) / (frame_h / 2)
-
+                    logging.debug(f"Error: ({error_x}, {error_y})")
                     # Calculate how much to adjust servos
                     pan_delta = kp_pan * error_x * 10
                     tilt_delta = kp_tilt * error_y * 10
