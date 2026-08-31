@@ -84,19 +84,23 @@ def main():
                     
                     track_id = targeter.select(results)
 
-                elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
+                elif lock_status == LockStatus.LOCKED and (
+                    results.boxes.id is None or track_id not in results.boxes.id.tolist()
+                ):
                     lock_status = LockStatus.UNLOCKED
                     track_id = None
+                    targeter.release()
                     # Reset and detach servos
                     logging.info("Transitioning from LOCKED to UNLOCKED. Reseting servos...")
                     servo_controller.stop_both()
                     servo_controller.reset_both()
 
                 if lock_status == LockStatus.LOCKED:
-                    x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
+                    box_idx = results.boxes.id.tolist().index(track_id)
+                    x1, y1, x2, y2 = map(int, results.boxes.xyxy[box_idx].tolist())
 
                     logger.debug(f"{x1=}, {y1=}, {x2=}, {y2=}")
-                    x_center, y_center = (x2 - x1) / 2, (y2 - y1) / 2
+                    x_center, y_center = (x2 + x1) / 2, (y2 + y1) / 2
                     logger.debug(f"Locked target center: ({x_center}, {y_center})")
 
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -130,18 +134,16 @@ def main():
                     y_outside_threshold = tilt_delta < -threshold or tilt_delta > threshold
 
                     if x_outside_threshold:
-                        #x_angle = servo_controller.get_angle("pan_servo")
-                        #new_x = x_angle + pan_delta
-                        #logging.info(f"Panning to {new_x}")
-                        #servo_controller.set_angle_async("pan_servo", new_x)
-                        servo_controller.set_angle_async("pan_servo", pan_delta)
+                        x_angle = servo_controller.get_angle("pan_servo")
+                        new_x = x_angle + pan_delta
+                        logging.info(f"Panning to {new_x}")
+                        servo_controller.set_angle_async("pan_servo", new_x)
 
                     if y_outside_threshold:
-                        #y_angle = servo_controller.get_angle("tilt_servo")
-                        #new_y = y_angle = tilt_delta 
-                        #logging.info(f"Tilting to {new_y}")
-                        #servo_controller.set_angle_async("tilt_servo", new_y)
-                        servo_controller.set_angle_async("tilt_servo", tilt_delta)
+                        y_angle = servo_controller.get_angle("tilt_servo")
+                        new_y = y_angle + tilt_delta
+                        logging.info(f"Tilting to {new_y}")
+                        servo_controller.set_angle_async("tilt_servo", new_y)
 
                 cv2.imshow(f"Tracking Window", frame)
                 

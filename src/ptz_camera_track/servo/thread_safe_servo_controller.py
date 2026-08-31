@@ -18,6 +18,7 @@ class ServoConfig:
     min_pulse_width: float = 0.0005
     max_pulse_width: float = 0.0025
     initial_angle: Optional[float] = None
+    alpha: float = 0.1  # Used to help smoothen movement
 
 class MockServo:
     """AngularServo Mock for testing"""
@@ -59,12 +60,12 @@ class TSServo:
         self.config = config
         self.lock = threading.RLock()
         self.current_angle: Optional[float] = config.initial_angle
-
+        self.start_angle = config.initial_angle
+        self.alpha = config.alpha
         self._stop_flag = threading.Event()
         
         self._queue: queue.Queue = queue.Queue()
         self._worker = threading.Thread(target=self._process_queue, daemon=True)
-        self._worker.start()
         
         if use_mock:
             self._servo = MockServo(
@@ -84,11 +85,33 @@ class TSServo:
                 min_pulse_width = config.min_pulse_width,
                 max_pulse_width = config.max_pulse_width,
             )
-        
+
+            # Detach immediately to reduce the immediate shaking
+            self._servo.detach()
+        self._worker.start()
+    
     def _process_queue(self):
         while True:
+            if self._stop_flag.is_set():
+                # If signaled to stop (i.e., in the case of unlocked status) 
+                # stop all pending movements
+                logging.info(f"{self.name} has stop_flag set! Removing all items in queue...")
+                with self._queue.mutex:
+                    unfinished = self._queue.unfinished_tasks - len(self._queue.queue)
+                    if unfinished <= 0:
+                        if unfinished < 0:
+                            raise ValueError('task_done() called too many times')
+                        self._queue.all_tasks_done.notify_all()
+                    logging.info(f"{self.name} had {unfinished} tasks left")
+                    self._queue.unfinished_tasks = unfinished
+                    self._queue.queue.clear()
+                    logging.info(f"{self.name} has removed all items from its queue. Notifying all...")
+                    self._queue.not_full.notify_all()
+                self._stop_flag.clear()
+
             func = self._queue.get()
             if func is None:
+                logging.info(f"{self.name} was signaled to stop processing its queue.")
                 break
             func()
             self._queue.task_done()
@@ -101,12 +124,12 @@ class TSServo:
 
         return max(lo, min(hi, angle))
     
-    def set_angle(self, angle: float, settle_time: float = 0.5, detach_after: bool = True) -> None:
+    def set_angle(self, angle: float, settle_time: float = 0.5, detach_after: bool = False) -> None:
         with self.lock:
             angle = self._clamp(angle)
             logging.debug(f"Setting {self.name} servo to {angle} degrees")
-            self._servo.angle = angle
-
+            self._servo.angle = angle 
+            
             time.sleep(settle_time)
 
             if detach_after:
@@ -114,13 +137,18 @@ class TSServo:
                 self._servo.detach()
                 
             # Update current angle to keep track of it 
-            self.current_angle = angle
+            self.current_angle = angle 
     
     def get_angle(self):
         with self.lock:
             return self.current_angle
+    
+    def reset_angle(self):
+        with self.lock:
+            self._servo.angle = self.start_angle
+            self.current_angle = self.start_angle
 
-    def move_to(self, target_angle: float, step_degree: float = 1.0, step_delay: float = 0.02, detach_after: bool = True) -> None:
+    def move_to(self, target_angle: float, step_degree: float = 1.0, step_delay: float = 0.02, detach_after: bool = False) -> None:
         """Incrementally move the servos instead of jumping"""
 
         with self.lock:
@@ -141,12 +169,27 @@ class TSServo:
 
                 self._servo.angle = angle
                 time.sleep(step_delay)
-
+            self.current_angle = angle
+            
             if detach_after:
                 self._servo.detach()
 
-            self.current_angle = angle
     
+    def ease_to(self, target_angle, step_delay: float = 0.02, detach_after: bool = False) -> None:
+        """Ease into the target angle by going a percentage of the target angle and current angle"""
+        
+        with self.lock:
+            smoothed_angle = (self.alpha * target_angle) + ((1.0 - self.alpha) * self.current_angle)
+            logging.info(f"Moving towards {target_angle} by going to angle {smoothed_angle}")
+            
+            self._servo.angle = smoothed_angle
+            self.current_angle = smoothed_angle
+        
+            time.sleep(step_delay)
+        
+            if detach_after:
+                self._servo.detach()
+
     def stop(self) -> None:
         self._stop_flag.set()
 
@@ -169,6 +212,7 @@ class TSServoController:
                 self.PAN_SERVO: TSServo(self.PAN_SERVO, pan_servo_config, use_mock=use_mock),
                 self.TILT_SERVO: TSServo(self.TILT_SERVO, tilt_servo_config, use_mock=use_mock),
             }
+
         except Exception as e:
             logging.error("Could not instatiate Thread-Safe Servos")
             raise
@@ -192,6 +236,10 @@ class TSServoController:
 
     def stop(self, name: str) -> None:
         self._get_servo(name).stop()
+    
+    def stop_both(self) -> None:
+        self._servos[self.PAN_SERVO].stop()
+        self._servos[self.TILT_SERVO].stop()
 
     def set_angle_async(
         self,
@@ -208,7 +256,7 @@ class TSServoController:
         step_degree: float = 1.0,
         step_delay: float = 0.5
     ) -> threading.Thread:
-        self._get_servo(name)._submit(lambda: self.move_to(name, angle, settle_time=settle_time, step_degree=step_degree, step_delay=step_delay))
+        self._get_servo(name)._submit(lambda: self.move_to(name, angle, step_degree=step_degree, step_delay=step_delay))
 
     def set_both_async(
         self, 
@@ -226,11 +274,15 @@ class TSServoController:
         tilt_angle: float,
         step_angle: float = 3.0,
         step_delay: float = 0.5,
-    ):
+    ) -> None:
         """Helper function to slide both pan and tilt servos"""
         self.move_to_async(self.PAN_SERVO, pan_angle, step_angle=step_angle, step_delay=step_delay)
         self.move_to_async(self.TILT_SERVO, tilt_angle, step_angle=step_angle, step_delay=step_delay)
-    
+   
+    def reset_both(self) -> None:
+        self._servos[self.PAN_SERVO].reset_angle()
+        self._servos[self.TILT_SERVO].reset_angle()
+
     def wait_all(self) -> None:
         for servo in self._servos.values():
             servo._queue.join()
@@ -240,10 +292,12 @@ class TSServoController:
         logging.info("Thread-safe Servo Controller initiating servo cleanup")
         for name in list(self._servos.keys()):
             self.stop(name)
+        logging.info("Servo Controller is waiting for all items in servo queue to finish")
         self.wait_all()
         for servo in self._servos.values():
             servo.cleanup()
-
+        
+        
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.DEBUG)
