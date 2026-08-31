@@ -11,7 +11,7 @@ def get_cli_parser():
     tracking_group.add_argument("-c", "--confidence", default=0.5)
     tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
     tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
-    tracking_group.add_argument("--threshold", type=float, help="The degrees of difference from target to frame center to determine whether to mvoe servos or not", default=10.0)
+    tracking_group.add_argument("--threshold", type=float, help="The minimum threshold the delta angle must be before servos move", default=7.0)
 
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")
