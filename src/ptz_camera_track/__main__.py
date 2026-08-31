@@ -9,9 +9,12 @@ from ptz_camera_track.servo.thread_safe_servo_controller import TSServoControlle
 
 from ptz_camera_track.tracker.tracker import Tracker
 
+from ptz_camera_track.utility.calculate_fps import FPSCalculator
+
 from enum import Enum
 import cv2
 import logging
+import time
 
 kp_pan = 3
 kp_tilt = 3
@@ -40,15 +43,15 @@ def main():
     )
     targeter = TargetSelector()
     zoom_strategy = ZoomStrategy()
-
+    fps_calc = FPSCalculator()
     pan_servo_config = ServoConfig(
-        23,
+        12,
         min_angle=-60.0,
         max_angle=60.0,
         initial_angle=0
     )
     tilt_servo_config = ServoConfig(
-        24,
+        19,
         min_angle=-10,
         max_angle=40,
         initial_angle=0,
@@ -58,11 +61,19 @@ def main():
     track_id = None
 
     threshold = parser.threshold
+
     with CameraController(device_index=parser.camera_index) as camera: 
         width, height = camera.get_frame_size()
         try:
+            # Used to calculate FPS
+            alpha = 0.1
+            prev_time = 0
+            new_time = 0
+            fps_smoothed = 0
             while True:
                 frame = camera.read_frame()
+                fps_calc.calculate_fps(frame)
+                
                 frame_h, frame_w = frame.shape[:2]
 
                 results = tracker.track_frame(frame)
@@ -76,6 +87,10 @@ def main():
                 elif results.boxes.id is None and lock_status == LockStatus.LOCKED:
                     lock_status = LockStatus.UNLOCKED
                     track_id = None
+                    # Reset and detach servos
+                    logging.info("Transitioning from LOCKED to UNLOCKED. Reseting servos...")
+                    servo_controller.stop_both()
+                    servo_controller.reset_both()
 
                 if lock_status == LockStatus.LOCKED:
                     x1, y1, x2, y2 = map(int, results.boxes.xyxy[0].tolist())
@@ -103,11 +118,11 @@ def main():
                 
                     # Calculate the difference from target's box center from 
                     # screen's center and normalize it
-                    error_x = (x_center - frame_w / 2) / (frame_w / 2)
-                    error_y = (y_center - frame_h) / (frame_h / 2)
+                    error_x = (x_center - frame_w / 2) / (frame_w / 2) # [-1, 1]
+                    error_y = (y_center - frame_h / 2) / (frame_h / 2)
                     logging.debug(f"Error: ({error_x}, {error_y})")
                     # Calculate how much to adjust servos
-                    pan_delta = kp_pan * error_x * 10
+                    pan_delta = kp_pan * error_x * 10 # positive value since this means left
                     tilt_delta = kp_tilt * error_y * 10
                     
                     # Only move servos when passed by a certain threshold
@@ -115,16 +130,18 @@ def main():
                     y_outside_threshold = tilt_delta < -threshold or tilt_delta > threshold
 
                     if x_outside_threshold:
-                        x_angle = servo_controller.get_angle("pan_servo")
-                        new_x = x_angle + pan_delta
-                        logging.info(f"Panning to {new_x}")
-                        servo_controller.set_angle_async("pan_servo", new_x)
-                    
+                        #x_angle = servo_controller.get_angle("pan_servo")
+                        #new_x = x_angle + pan_delta
+                        #logging.info(f"Panning to {new_x}")
+                        #servo_controller.set_angle_async("pan_servo", new_x)
+                        servo_controller.set_angle_async("pan_servo", pan_delta)
+
                     if y_outside_threshold:
-                        y_angle = servo_controller.get_angle("tilt_servo")
-                        new_y = y_angle = tilt_delta 
-                        logging.info(f"Tilting to {new_y}")
-                        servo_controller.set_angle_async("tilt_servo", new_y)
+                        #y_angle = servo_controller.get_angle("tilt_servo")
+                        #new_y = y_angle = tilt_delta 
+                        #logging.info(f"Tilting to {new_y}")
+                        #servo_controller.set_angle_async("tilt_servo", new_y)
+                        servo_controller.set_angle_async("tilt_servo", tilt_delta)
 
                 cv2.imshow(f"Tracking Window", frame)
                 
