@@ -177,9 +177,11 @@ class TSServo:
     
     def ease_to(self, target_angle, step_delay: float = 0.02, detach_after: bool = False) -> None:
         """Ease into the target angle by going a percentage of the target angle and current angle"""
-        
+
         with self.lock:
-            smoothed_angle = (self.alpha * target_angle) + ((1.0 - self.alpha) * self.current_angle)
+            target_angle = self._clamp(target_angle)
+            current = self.current_angle if self.current_angle is not None else target_angle
+            smoothed_angle = (self.alpha * target_angle) + ((1.0 - self.alpha) * current)
             logging.info(f"Moving towards {target_angle} by going to angle {smoothed_angle}")
             
             self._servo.angle = smoothed_angle
@@ -231,6 +233,10 @@ class TSServoController:
         """Blocking call to smoothly move servos"""
         self._get_servo(name).move_to(angle, step_degree=step_degree, step_delay=step_delay)
 
+    def ease_to(self, name: str, angle: float, step_delay: float = 0.02) -> None:
+        """Blocking call to smoothly ease a servo towards a target angle (EMA smoothing)"""
+        self._get_servo(name).ease_to(angle, step_delay=step_delay)
+
     def get_angle(self, name: str) -> Optional[float]:
         return self._get_servo(name).get_angle()
 
@@ -257,6 +263,14 @@ class TSServoController:
         step_delay: float = 0.5
     ) -> threading.Thread:
         self._get_servo(name)._submit(lambda: self.move_to(name, angle, step_degree=step_degree, step_delay=step_delay))
+
+    def ease_to_async(
+        self,
+        name: str,
+        angle: float,
+        step_delay: float = 0.02
+    ) -> None:
+        self._get_servo(name)._submit(lambda: self.ease_to(name, angle, step_delay=step_delay))
 
     def set_both_async(
         self, 
@@ -294,6 +308,7 @@ class TSServoController:
             self.stop(name)
         logging.info("Servo Controller is waiting for all items in servo queue to finish")
         self.wait_all()
+        self.reset_both()
         for servo in self._servos.values():
             servo.cleanup()
         
