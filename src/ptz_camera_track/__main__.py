@@ -66,13 +66,8 @@ def main():
         width, height = camera.get_frame_size()
         try:
             # Used to calculate FPS
-            alpha = 0.1
-            prev_time = 0
-            new_time = 0
-            fps_smoothed = 0
             while True:
                 frame = camera.read_frame()
-                fps_calc.calculate_fps(frame)
                 
                 frame_h, frame_w = frame.shape[:2]
 
@@ -126,8 +121,8 @@ def main():
                     error_y = (y_center - frame_h / 2) / (frame_h / 2)
                     logging.debug(f"Error: ({error_x}, {error_y})")
                     # Calculate how much to adjust servos
-                    pan_delta = kp_pan * error_x * 10 # positive value since this means left
-                    tilt_delta = kp_tilt * error_y * 10
+                    pan_delta = -kp_pan * error_x * 3
+                    tilt_delta = -kp_tilt * error_y * 2
                     
                     # Only move servos when passed by a certain threshold
                     x_outside_threshold = pan_delta < -threshold or pan_delta > threshold
@@ -137,14 +132,15 @@ def main():
                         x_angle = servo_controller.get_angle("pan_servo")
                         new_x = x_angle + pan_delta
                         logging.info(f"Panning to {new_x}")
-                        servo_controller.set_angle_async("pan_servo", new_x)
+                        servo_controller.ease_to_async("pan_servo", new_x)
 
                     if y_outside_threshold:
                         y_angle = servo_controller.get_angle("tilt_servo")
                         new_y = y_angle + tilt_delta
                         logging.info(f"Tilting to {new_y}")
-                        servo_controller.set_angle_async("tilt_servo", new_y)
+                        servo_controller.ease_to_async("tilt_servo", new_y)
 
+                fps_calc.calculate_fps(frame)
                 cv2.imshow(f"Tracking Window", frame)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
