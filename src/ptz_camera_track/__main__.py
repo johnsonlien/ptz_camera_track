@@ -108,14 +108,25 @@ def main():
                         (0, 255, 0),
                         2,
                     )
-                    frame = zoom_strategy.zoom(
-                        frame,
-                        strategy = "affine",
-                        zoom_scale = parser.zoom,
-                        center=(x_center, y_center) 
-                    )
-                
-                    # Calculate the difference from target's box center from 
+                    box_area = max(0, x2 - x1) * max(0, y2 - y1)
+                    frame_area = frame_w * frame_h
+                    target_area_ratio = box_area / frame_area if frame_area else 0.0
+                    logger.debug(f"Target area ratio: {target_area_ratio:.4f}")
+
+                    # Only zoom in while the target is still small in frame; once it's
+                    # big enough on its own, zooming further would just push it out of view.
+                    if target_area_ratio <= parser.zoom_threshold:
+
+                        # Future improvement:
+                        #   - have zoom scale between min and max range of target 
+                        frame = zoom_strategy.zoom(
+                            frame,
+                            strategy = "affine",
+                            zoom_scale = parser.zoom,
+                            center=(x_center, y_center)
+                        )
+
+                    # Calculate the difference from target's box center from
                     # screen's center and normalize it
                     error_x = (x_center - frame_w / 2) / (frame_w / 2) # [-1, 1]
                     error_y = (y_center - frame_h / 2) / (frame_h / 2)
