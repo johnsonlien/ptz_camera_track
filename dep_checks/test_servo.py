@@ -45,7 +45,7 @@ class PanTiltController:
         )
 
         if factory:
-            kwards["pin_factory"] = factory
+            kwargs["pin_factory"] = factory
 
         self.pan_servo = AngularServo(pan_pin, **kwargs)
         self.tilt_servo = AngularServo(tilt_pin, **kwargs)
