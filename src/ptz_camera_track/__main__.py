@@ -3,6 +3,7 @@ from ptz_camera_track.cli.parse import get_cli_parser
 from ptz_camera_track.camera.camera_controller import CameraController
 from ptz_camera_track.camera.zoom import ZoomStrategy
 
+from ptz_camera_track.control.keyboard_controller import KeyboardServoController
 from ptz_camera_track.control.target_selector import TargetSelector
 
 from ptz_camera_track.servo.thread_safe_servo_controller import TSServoController, ServoConfig
@@ -48,15 +49,20 @@ def main():
         12,
         min_angle=-60.0,
         max_angle=60.0,
+        min_pulse_width=0.0009,
+        max_pulse_width=0.0023,
         initial_angle=0
     )
     tilt_servo_config = ServoConfig(
         19,
         min_angle=-10,
         max_angle=40,
+        min_pulse_width=0.0009,
+        max_pulse_width=0.0023,
         initial_angle=0,
     )
     servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
+    keyboard_controller = KeyboardServoController(servo_controller)
     lock_status = LockStatus.UNLOCKED
     track_id = None
 
@@ -153,8 +159,10 @@ def main():
 
                 fps_calc.calculate_fps(frame)
                 cv2.imshow(f"Tracking Window", frame)
-                
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+
+                key = cv2.waitKey(1) & 0xFF
+                keyboard_controller.handle_key(key)
+                if key == ord('q'):
                     break
         finally:
             logging.info("Detaching servos...")
