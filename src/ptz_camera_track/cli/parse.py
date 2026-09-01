@@ -17,6 +17,7 @@ def get_cli_parser():
     camera_group = parser.add_argument_group("Camera Settings")
     camera_group.add_argument('-f', "--file", help="Designate file to use")
     camera_group.add_argument("-z", "--zoom", help="Set the zoom scale", default=1.5, type=float)
+    camera_group.add_argument("-zt", "--zoom-threshold", help="Only zoom in while the locked target's bounding box covers less than this fraction of the frame area", default=0.30, type=float)
     camera_group.add_argument("-ts", "--track-strategy", choices=["manual", "highest_confidence"], help="Choose a tracking strategy for targeting.", default="highest_confidence")
 
     camera_group.add_argument("-ci", "--camera-index", help="Change camera index", default=0, type=int)
