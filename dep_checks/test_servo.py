@@ -29,11 +29,6 @@ class PanTiltController:
         try:
             factory = PiGPIOFactory()
         except Exception:
-            print(
-                "Warning: lgpio pin factory unavailable ('pip install lgpio'),"
-                "falling back to gpiozero's default. Servo motion may jitter.",
-                file.sys.stderr,
-            )
             factory = None
         
         kwargs = dict(
