@@ -9,6 +9,20 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
 from gpiozero import AngularServo
+from gpiozero.pins.rpigpio import RPiGPIOFactory
+
+# gpiozero's default LGPIOFactory drives hardware PWM at whole-percent duty-cycle
+# resolution, which only yields ~6 achievable positions across a typical servo's
+# full angular range and causes visible jitter/snapping. RPiGPIOFactory's software
+# PWM gives much finer resolution; shared as a single instance across servos since
+# gpiozero pin factories are meant to be reused rather than created per-device.
+_pin_factory: Optional[RPiGPIOFactory] = None
+
+def _get_pin_factory() -> RPiGPIOFactory:
+    global _pin_factory
+    if _pin_factory is None:
+        _pin_factory = RPiGPIOFactory()
+    return _pin_factory
 
 @dataclass
 class ServoConfig:
@@ -19,6 +33,7 @@ class ServoConfig:
     max_pulse_width: float = 0.0025
     initial_angle: Optional[float] = None
     alpha: float = 0.1  # Used to help smoothen movement
+    detach_when_idle: bool = False
 
 class MockServo:
     """AngularServo Mock for testing"""
@@ -84,10 +99,12 @@ class TSServo:
                 max_angle = config.max_angle,
                 min_pulse_width = config.min_pulse_width,
                 max_pulse_width = config.max_pulse_width,
+                pin_factory = _get_pin_factory(),
             )
 
-            # Detach immediately to reduce the immediate shaking
-            self._servo.detach()
+            if config.detach_when_idle:
+                # Detach immediately to reduce the immediate shaking
+                self._servo.detach()
         self._worker.start()
     
     def _process_queue(self):
@@ -119,6 +136,27 @@ class TSServo:
     def _submit(self, func):
         self._queue.put(func)
 
+    def _submit_latest(self, func) -> None:
+        """Submit a task, discarding any not-yet-started pending task instead of
+        queuing behind it. Intended for control loops (e.g. target tracking) where
+        only the most recent command matters and any older, unstarted ones would
+        just be stale by the time they'd run. A task already being executed is
+        left to finish uninterrupted."""
+        with self._queue.mutex:
+            discarded = len(self._queue.queue)
+            if discarded:
+                unfinished = self._queue.unfinished_tasks - discarded
+                if unfinished < 0:
+                    raise ValueError('task_done() called too many times')
+                self._queue.unfinished_tasks = unfinished
+                self._queue.queue.clear()
+                if unfinished == 0:
+                    self._queue.all_tasks_done.notify_all()
+
+            self._queue.queue.append(func)
+            self._queue.unfinished_tasks += 1
+            self._queue.not_empty.notify()
+
     def _clamp(self, angle: float) -> float:
         lo, hi = sorted((self.config.min_angle, self.config.max_angle))
 
@@ -143,10 +181,20 @@ class TSServo:
         with self.lock:
             return self.current_angle
     
-    def reset_angle(self):
+    def reset_angle(self, step_degree: float = 1.0, step_delay: float = 0.02):
         with self.lock:
-            self._servo.angle = self.start_angle
-            self.current_angle = self.start_angle
+            target_angle = self.start_angle
+            angle = self.current_angle if self.current_angle is not None else target_angle
+            direction = 1 if target_angle >= angle else -1
+
+            while direction * (target_angle - angle) > 0:
+                angle += direction * step_degree
+                if direction * (angle - target_angle) > 0:
+                    angle = target_angle
+                self._servo.angle = angle
+                time.sleep(step_delay)
+
+            self.current_angle = angle
 
     def move_to(self, target_angle: float, step_degree: float = 1.0, step_delay: float = 0.02, detach_after: bool = False) -> None:
         """Incrementally move the servos instead of jumping"""
@@ -270,7 +318,11 @@ class TSServoController:
         angle: float,
         step_delay: float = 0.02
     ) -> None:
-        self._get_servo(name)._submit(lambda: self.ease_to(name, angle, step_delay=step_delay))
+        """Non-blocking ease towards angle. Coalescing: replaces any not-yet-started
+        pending command for this servo instead of queuing behind it, so tracking
+        always chases the most recent target rather than working through a backlog
+        of stale ones."""
+        self._get_servo(name)._submit_latest(lambda: self.ease_to(name, angle, step_delay=step_delay))
 
     def set_both_async(
         self, 
