@@ -33,8 +33,8 @@ class KeyboardServoController:
         self._bindings: Dict[int, Callable[[], None]] = {
             ord('a'): lambda: self._pan(-self.pan_step),
             ord('d'): lambda: self._pan(self.pan_step),
-            ord('w'): lambda: self._tilt(-self.tilt_step),
-            ord('s'): lambda: self._tilt(self.tilt_step),
+            ord('w'): lambda: self._tilt(self.tilt_step),
+            ord('s'): lambda: self._tilt(-self.tilt_step),
             ord('r'): self._reset,
             ord(' '): self._stop,
         }
