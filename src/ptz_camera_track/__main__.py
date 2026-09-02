@@ -17,8 +17,8 @@ import cv2
 import logging
 import time
 
-kp_pan = 3
-kp_tilt = 3
+kp_pan = 6
+kp_tilt = 6
 UNLOCK_AREA_RATIO=0.12
 
 class LockStatus(Enum):
@@ -51,7 +51,8 @@ def main():
         max_angle=60.0,
         min_pulse_width=0.0009,
         max_pulse_width=0.0023,
-        initial_angle=0
+        initial_angle=0,
+        alpha=1.0,
     )
     tilt_servo_config = ServoConfig(
         19,
@@ -60,15 +61,16 @@ def main():
         min_pulse_width=0.0009,
         max_pulse_width=0.0023,
         initial_angle=0,
+        alpha=1.0,
     )
-    servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
-    keyboard_controller = KeyboardServoController(servo_controller)
+    
     lock_status = LockStatus.UNLOCKED
     track_id = None
-
     threshold = parser.threshold
 
     with CameraController(device_index=parser.camera_index) as camera: 
+        servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
+        keyboard_controller = KeyboardServoController(servo_controller)
         width, height = camera.get_frame_size()
         try:
             # Used to calculate FPS
@@ -82,8 +84,8 @@ def main():
                 # Handle lock state transition
                 if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
                     lock_status = LockStatus.LOCKED
-                    
                     track_id = targeter.select(results)
+                    logging.info(f"Locked onto a target!")
 
                 elif lock_status == LockStatus.LOCKED and (
                     results.boxes.id is None or track_id not in results.boxes.id.tolist()
@@ -91,10 +93,6 @@ def main():
                     lock_status = LockStatus.UNLOCKED
                     track_id = None
                     targeter.release()
-                    # Reset and detach servos
-                    logging.info("Transitioning from LOCKED to UNLOCKED. Reseting servos...")
-                    servo_controller.stop_both()
-                    servo_controller.reset_both()
 
                 if lock_status == LockStatus.LOCKED:
                     box_idx = results.boxes.id.tolist().index(track_id)
