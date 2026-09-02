@@ -11,11 +11,7 @@ from typing import Callable, Dict, Optional
 from gpiozero import AngularServo
 from gpiozero.pins.rpigpio import RPiGPIOFactory
 
-# gpiozero's default LGPIOFactory drives hardware PWM at whole-percent duty-cycle
-# resolution, which only yields ~6 achievable positions across a typical servo's
-# full angular range and causes visible jitter/snapping. RPiGPIOFactory's software
-# PWM gives much finer resolution; shared as a single instance across servos since
-# gpiozero pin factories are meant to be reused rather than created per-device.
+# Change AngularServo's pin factory as this might help improve jitter
 _pin_factory: Optional[RPiGPIOFactory] = None
 
 def _get_pin_factory() -> RPiGPIOFactory:
@@ -78,7 +74,6 @@ class TSServo:
         self.start_angle = config.initial_angle
         self.alpha = config.alpha
         self._stop_flag = threading.Event()
-        
         self._queue: queue.Queue = queue.Queue()
         self._worker = threading.Thread(target=self._process_queue, daemon=True)
         
@@ -137,11 +132,6 @@ class TSServo:
         self._queue.put(func)
 
     def _submit_latest(self, func) -> None:
-        """Submit a task, discarding any not-yet-started pending task instead of
-        queuing behind it. Intended for control loops (e.g. target tracking) where
-        only the most recent command matters and any older, unstarted ones would
-        just be stale by the time they'd run. A task already being executed is
-        left to finish uninterrupted."""
         with self._queue.mutex:
             discarded = len(self._queue.queue)
             if discarded:
@@ -196,7 +186,12 @@ class TSServo:
 
             self.current_angle = angle
 
-    def move_to(self, target_angle: float, step_degree: float = 1.0, step_delay: float = 0.02, detach_after: bool = False) -> None:
+    def move_to(self, 
+        target_angle: float,
+        step_degree: float = 1.0,
+        step_delay: float = 0.02, 
+        detach_after: bool = False
+    ) -> None:
         """Incrementally move the servos instead of jumping"""
 
         with self.lock:
@@ -223,7 +218,12 @@ class TSServo:
                 self._servo.detach()
 
     
-    def ease_to(self, target_angle, step_delay: float = 0.02, detach_after: bool = False) -> None:
+    def ease_to(
+        self,
+        target_angle,
+        step_delay: float = 0.02,
+        detach_after: bool = False
+    ) -> None:
         """Ease into the target angle by going a percentage of the target angle and current angle"""
 
         with self.lock:
@@ -318,10 +318,6 @@ class TSServoController:
         angle: float,
         step_delay: float = 0.02
     ) -> None:
-        """Non-blocking ease towards angle. Coalescing: replaces any not-yet-started
-        pending command for this servo instead of queuing behind it, so tracking
-        always chases the most recent target rather than working through a backlog
-        of stale ones."""
         self._get_servo(name)._submit_latest(lambda: self.ease_to(name, angle, step_delay=step_delay))
 
     def set_both_async(
