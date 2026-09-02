@@ -12,9 +12,6 @@ Setup:
 - [Jumper wires](https://www.amazon.com/dp/B01EV70C78?ref=ppx_yo2ov_dt_b_fed_asin_title)
 - [External power supply](https://www.amazon.com/dp/B09VT2G5M4?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
-# My setup
-![DIY PTZ Camera](imgs/PTZ_Camera_Setup.jpg)
-
 # Environment
 
 ## WSL
@@ -69,4 +66,7 @@ This repo uses pytest. You can install the package and then just run `pytest ./t
 export PYTHONPATH="$(pwd)/src"
 pytest ./test
 ```
+
+# My setup
+![DIY PTZ Camera](imgs/PTZ_Camera_Setup.jpg)
 
