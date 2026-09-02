@@ -17,9 +17,13 @@ import cv2
 import logging
 import time
 
+# kp_pan and kp_tilt are used to adjust how much the servos will move
+# when needing to move. This should by dynamically calculated based on
+# object we are tracking
+# i.e humans don't jerk in movement as quickly as fish so we can probably
+# bump up this number for fish specifically
 kp_pan = 6
 kp_tilt = 6
-UNLOCK_AREA_RATIO=0.12
 
 class LockStatus(Enum):
     UNLOCKED = 0 
