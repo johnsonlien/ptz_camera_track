@@ -12,6 +12,7 @@ def get_cli_parser():
     tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
     tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
     tracking_group.add_argument("--threshold", type=float, help="The minimum threshold the delta angle must be before servos move", default=7.0)
+    tracking_group.add_argument("-de", "--detect-every", type=int, default=2, help="Run object detection once every N frames instead of every frame; frames in between reuse the last detection result")
 
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")

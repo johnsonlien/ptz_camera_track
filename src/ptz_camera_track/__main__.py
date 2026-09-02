@@ -67,20 +67,27 @@ def main():
     lock_status = LockStatus.UNLOCKED
     track_id = None
     threshold = parser.threshold
+    detect_every = max(1, parser.detect_every)
 
     with CameraController(device_index=parser.camera_index) as camera: 
         servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
         keyboard_controller = KeyboardServoController(servo_controller)
         width, height = camera.get_frame_size()
+        frame_count = 0
+        results = None
         try:
             # Used to calculate FPS
             while True:
                 frame = camera.read_frame()
-                
+
                 frame_h, frame_w = frame.shape[:2]
 
-                results = tracker.track_frame(frame)
-                
+                frame_count += 1
+                # Only run detection every `detect_every` frames to reduce CPU load;
+                # frames in between reuse the last detection result.
+                if results is None or frame_count % detect_every == 0:
+                    results = tracker.track_frame(frame)
+
                 # Handle lock state transition
                 if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
                     lock_status = LockStatus.LOCKED
