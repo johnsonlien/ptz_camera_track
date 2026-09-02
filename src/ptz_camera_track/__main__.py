@@ -72,7 +72,6 @@ def main():
     with CameraController(device_index=parser.camera_index) as camera: 
         servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
         keyboard_controller = KeyboardServoController(servo_controller)
-        width, height = camera.get_frame_size()
         frame_count = 0
         results = None
         try:
@@ -100,7 +99,8 @@ def main():
                     lock_status = LockStatus.UNLOCKED
                     track_id = None
                     targeter.release()
-
+                
+                # Perform object detection, zooming, panning, and tilting only when we are locked onto something
                 if lock_status == LockStatus.LOCKED:
                     box_idx = results.boxes.id.tolist().index(track_id)
                     x1, y1, x2, y2 = map(int, results.boxes.xyxy[box_idx].tolist())
