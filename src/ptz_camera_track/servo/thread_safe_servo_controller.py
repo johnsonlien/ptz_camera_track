@@ -9,15 +9,14 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
 from gpiozero import AngularServo
-from gpiozero.pins.rpigpio import RPiGPIOFactory
+from gpiozero.pins.lgpio import LGPIOFactory
 
-# Change AngularServo's pin factory as this might help improve jitter
-_pin_factory: Optional[RPiGPIOFactory] = None
+_pin_factory: Optional[LGPIOFactory] = None
 
-def _get_pin_factory() -> RPiGPIOFactory:
+def _get_pin_factory() -> LGPIOFactory:
     global _pin_factory
     if _pin_factory is None:
-        _pin_factory = RPiGPIOFactory()
+        _pin_factory = LGPIOFactory()
     return _pin_factory
 
 @dataclass
@@ -174,6 +173,9 @@ class TSServo:
     def reset_angle(self, step_degree: float = 1.0, step_delay: float = 0.02):
         with self.lock:
             target_angle = self.start_angle
+            if target_angle is None:
+                logging.warning(f"{self.name} has no initial_angle configured; skipping reset_angle")
+                return
             angle = self.current_angle if self.current_angle is not None else target_angle
             direction = 1 if target_angle >= angle else -1
 
