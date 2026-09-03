@@ -8,7 +8,7 @@ Setup:
 - [Raspberry Pi 4 w 4 GB ram](https://vilros.com/products/raspberry-pi-4-model-b-1?variant=40809478750302)
 - [Survos MG995](https://www.amazon.com/dp/B07NQJ1VZ2?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) (+ [mounts and screws](https://www.amazon.com/dp/B07PQ12TXS?ref=ppx_yo2ov_dt_b_fed_asin_title)) 
 - Cardboard box for my base
-- Tape to secure the webcam onto the servos
+- Rubberbands to secure the webcam onto the servos
 - [Jumper wires](https://www.amazon.com/dp/B01EV70C78?ref=ppx_yo2ov_dt_b_fed_asin_title)
 - [External power supply](https://www.amazon.com/dp/B09VT2G5M4?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
@@ -66,4 +66,7 @@ This repo uses pytest. You can install the package and then just run `pytest ./t
 export PYTHONPATH="$(pwd)/src"
 pytest ./test
 ```
+
+# My setup
+![DIY PTZ Camera](imgs/PTZ_Camera_Setup.jpg)
 
