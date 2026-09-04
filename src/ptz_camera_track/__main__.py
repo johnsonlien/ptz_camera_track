@@ -37,7 +37,7 @@ def main():
     logging.basicConfig(
         level=parser.logging,
     )
-
+    logging.info(f"Loading {parser.model}...")
     tracker = Tracker(
         model_path=parser.model,
         tracker_config=f"{parser.track_config}.yaml",
