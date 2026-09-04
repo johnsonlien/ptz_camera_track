@@ -368,16 +368,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     # Some initial tests
     pan_config = ServoConfig(
-        23,
+        12,
         min_angle = -80.0,
         max_angle = 80.0,
         initial_angle = 0,
     )
     tilt_config = ServoConfig(
-        24,
-        min_angle = 40.0,
-        max_angle = 120.0,
-        initial_angle = 80
+        19,
+        min_angle = -20.0,
+        max_angle = 80.0,
+        initial_angle = 20
     )
 
     servo_controller = TSServoController(pan_config, tilt_config, use_mock=True)
