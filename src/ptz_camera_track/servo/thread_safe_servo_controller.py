@@ -8,16 +8,7 @@ import queue
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
-from gpiozero import AngularServo
-from gpiozero.pins.lgpio import LGPIOFactory
-
-_pin_factory: Optional[LGPIOFactory] = None
-
-def _get_pin_factory() -> LGPIOFactory:
-    global _pin_factory
-    if _pin_factory is None:
-        _pin_factory = LGPIOFactory()
-    return _pin_factory
+from ptz_camera_track.servo.hardware_servo import HardwareServo
 
 @dataclass
 class ServoConfig:
@@ -86,14 +77,13 @@ class TSServo:
                 max_pulse_width = config.max_pulse_width,
             )
         else:
-            self._servo = AngularServo(
+            self._servo = HardwareServo(
                 config.pin,
                 initial_angle = config.initial_angle,
                 min_angle = config.min_angle,
                 max_angle = config.max_angle,
                 min_pulse_width = config.min_pulse_width,
                 max_pulse_width = config.max_pulse_width,
-                pin_factory = _get_pin_factory(),
             )
 
             if config.detach_when_idle:

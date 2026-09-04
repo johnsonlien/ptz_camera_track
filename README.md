@@ -67,6 +67,10 @@ export PYTHONPATH="$(pwd)/src"
 pytest ./test
 ```
 
+## Servo Library
+
+Swapped out from using gpiozero to using rpi_harware_pwm because using lgpio resulted in HUGE amounts of servo jitter.
+
 # My setup
 ![DIY PTZ Camera](imgs/PTZ_Camera_Setup.jpg)
 

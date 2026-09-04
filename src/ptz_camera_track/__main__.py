@@ -56,7 +56,7 @@ def main():
         min_pulse_width=0.0009,
         max_pulse_width=0.0023,
         initial_angle=0,
-        alpha=1.0,
+        alpha=0.8,
     )
     tilt_servo_config = ServoConfig(
         19,
@@ -65,7 +65,7 @@ def main():
         min_pulse_width=0.0009,
         max_pulse_width=0.0023,
         initial_angle=0,
-        alpha=1.0,
+        alpha=0.8,
     )
     
     lock_status = LockStatus.UNLOCKED
