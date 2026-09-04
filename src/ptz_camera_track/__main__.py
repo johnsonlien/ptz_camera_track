@@ -22,8 +22,8 @@ import time
 # object we are tracking
 # i.e humans don't jerk in movement as quickly as fish so we can probably
 # bump up this number for fish specifically
-kp_pan = 6
-kp_tilt = 6
+kp_pan = 4 
+kp_tilt = 3
 
 class LockStatus(Enum):
     UNLOCKED = 0 
@@ -72,6 +72,7 @@ def main():
     track_id = None
     threshold = parser.threshold
     detect_every = max(1, parser.detect_every)
+    infer_scale = parser.infer_scale
 
     with CameraController(device_index=parser.camera_index) as camera: 
         servo_controller = TSServoController(pan_servo_config, tilt_servo_config)
@@ -89,7 +90,11 @@ def main():
                 # Only run detection every `detect_every` frames to reduce CPU load;
                 # frames in between reuse the last detection result.
                 if results is None or frame_count % detect_every == 0:
-                    results = tracker.track_frame(frame)
+                    if infer_scale != 1.0:
+                        infer_frame = cv2.resize(frame, None, fx=infer_scale, fy=infer_scale, interpolation=cv2.INTER_AREA)
+                    else:
+                        infer_frame = frame
+                    results = tracker.track_frame(infer_frame)
 
                 # Handle lock state transition
                 if results.boxes.id is not None and lock_status == LockStatus.UNLOCKED:
@@ -107,7 +112,12 @@ def main():
                 # Perform object detection, zooming, panning, and tilting only when we are locked onto something
                 if lock_status == LockStatus.LOCKED:
                     box_idx = results.boxes.id.tolist().index(track_id)
-                    x1, y1, x2, y2 = map(int, results.boxes.xyxy[box_idx].tolist())
+                    x1, y1, x2, y2 = results.boxes.xyxy[box_idx].tolist()
+                    if infer_scale != 1.0:
+                        # Boxes were detected on the downscaled inference frame; map
+                        # them back to the full-resolution frame's coordinate space.
+                        x1, y1, x2, y2 = x1 / infer_scale, y1 / infer_scale, x2 / infer_scale, y2 / infer_scale
+                    x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
 
                     logger.debug(f"{x1=}, {y1=}, {x2=}, {y2=}")
                     x_center, y_center = (x2 + x1) / 2, (y2 + y1) / 2

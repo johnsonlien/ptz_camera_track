@@ -8,11 +8,12 @@ def get_cli_parser():
     # Tracking 
     tracking_group = parser.add_argument_group("Tracking Settings")
     tracking_group.add_argument("-m", "--model", type=str, default="yolo11n_fish_ncnn_model", help="Path to model. If not found, will try to download from Ultralytics")
-    tracking_group.add_argument("-c", "--confidence", default=0.5)
+    tracking_group.add_argument("-c", "--confidence", help="Change the confidence level threshold to be tracked", type=float, default=0.5)
     tracking_group.add_argument("-tc", "--track-config", choices=["bytetrack", "botsort"], default="botsort")
     tracking_group.add_argument("-t", "--target", type=str, help="Select a category to track", default="person")
     tracking_group.add_argument("--threshold", type=float, help="The minimum threshold the delta angle must be before servos move", default=7.0)
     tracking_group.add_argument("-de", "--detect-every", type=int, default=2, help="Run object detection once every N frames instead of every frame; frames in between reuse the last detection result")
+    tracking_group.add_argument("-is", "--infer-scale", type=float, default=1.0, help="Downscale factor applied to the frame before running detection (e.g. 0.5 halves width/height); detected boxes are scaled back up to the full-resolution frame. 1.0 disables downscaling")
 
     # Camera-related
     camera_group = parser.add_argument_group("Camera Settings")
